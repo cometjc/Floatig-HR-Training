@@ -1,0 +1,6 @@
+<resources>
+    <color name="app_black">#050607</color>
+    <color name="brand_blue">#4FC3F7</color>
+    <color name="zone_green">#4CAF50</color>
+    <color name="zone_orange">#FF7043</color>
+</resources>
