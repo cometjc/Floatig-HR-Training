@@ -82,6 +82,9 @@ import com.example.floatinghr.model.AlertState
 import com.example.floatinghr.model.HeartRateZone
 import com.example.floatinghr.model.TrainingPlan
 import com.example.floatinghr.model.defaultZones
+import com.example.floatinghr.prediction.PacingDecision
+import com.example.floatinghr.prediction.PacingPredictionEngine
+import com.example.floatinghr.prediction.TrainingTelemetrySample
 import com.example.floatinghr.service.FloatingHeartRateService
 import com.example.floatinghr.service.HeartRateForegroundService
 import kotlinx.coroutines.delay
@@ -463,14 +466,37 @@ private fun Stepper(label: String, value: Int) {
 @Composable
 private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
     var bpm by remember { mutableIntStateOf(127) }
+    var cadence by remember { mutableIntStateOf(166) }
+    var elapsedSeconds by remember { mutableIntStateOf(0) }
     var paused by remember { mutableStateOf(false) }
     val zone = training.segments.first().zone
     val state = AlertState.fromBpm(bpm, zone)
+    val predictionEngine = remember { PacingPredictionEngine() }
+    val samples = remember {
+        mutableStateOf(
+            listOf(
+                TrainingTelemetrySample(0, 113, 156),
+                TrainingTelemetrySample(15, 116, 160),
+                TrainingTelemetrySample(30, 119, 164),
+                TrainingTelemetrySample(45, 122, 168),
+                TrainingTelemetrySample(60, 125, 170),
+                TrainingTelemetrySample(75, 127, 170)
+            )
+        )
+    }
+    val prediction = predictionEngine.predict(
+        samples = samples.value,
+        targetMinBpm = zone.minBpm,
+        targetMaxBpm = zone.maxBpm
+    )
 
     LaunchedEffect(paused) {
         while (!paused) {
             delay(1800)
-            bpm = (118..134).random()
+            elapsedSeconds += 2
+            cadence = (cadence + listOf(-1, 0, 1, 2).random()).coerceIn(150, 184)
+            bpm = (bpm + listOf(0, 1, 1, 2, -1).random()).coerceIn(110, 134)
+            samples.value = (samples.value + TrainingTelemetrySample(elapsedSeconds.toLong(), bpm, cadence)).takeLast(24)
         }
     }
 
@@ -493,17 +519,26 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
             Text("BPM", color = MutedText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
-                "✓ ${state.label}",
-                color = state.color,
+                "${prediction.decision.icon} ${prediction.decision.label}",
+                color = prediction.decision.color,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(state.color.copy(alpha = 0.18f))
-                    .border(1.dp, state.color, CircleShape)
+                    .background(prediction.decision.color.copy(alpha = 0.18f))
+                    .border(1.dp, prediction.decision.color, CircleShape)
                     .padding(horizontal = 18.dp, vertical = 8.dp)
             )
             Spacer(Modifier.height(14.dp))
             Text("Ziel: ${zone.label} (${zone.minBpm}-${zone.maxBpm} bpm)", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                prediction.message,
+                color = if (prediction.decision == PacingDecision.SlowDownNow) Danger else MutedText,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                "步頻 ${cadence} spm · 上升 ${"%.1f".format(prediction.heartRateSlopeBpmPerMinute)} bpm/min",
+                color = MutedText
+            )
             Text("Nächstes: 1m Z3 Tempo", color = MutedText)
             Spacer(Modifier.weight(1f))
             Text("14:41", color = Color.White.copy(alpha = 0.75f), fontSize = 52.sp, fontWeight = FontWeight.Bold)
@@ -560,6 +595,30 @@ private fun HeartGauge(bpm: Int) {
         drawCircle(Color(0xFF4385F5), 13.dp.toPx(), end)
     }
 }
+
+private val PacingDecision.label: String
+    get() = when (this) {
+        PacingDecision.SpeedUp -> "加快步伐"
+        PacingDecision.Maintain -> "Im Ziel"
+        PacingDecision.SlowDownSoon -> "提前放慢"
+        PacingDecision.SlowDownNow -> "立即放慢"
+    }
+
+private val PacingDecision.icon: String
+    get() = when (this) {
+        PacingDecision.SpeedUp -> "↗"
+        PacingDecision.Maintain -> "✓"
+        PacingDecision.SlowDownSoon -> "↘"
+        PacingDecision.SlowDownNow -> "!"
+    }
+
+private val PacingDecision.color: Color
+    get() = when (this) {
+        PacingDecision.SpeedUp -> Cyan
+        PacingDecision.Maintain -> Success
+        PacingDecision.SlowDownSoon -> Color(0xFFFFB300)
+        PacingDecision.SlowDownNow -> Danger
+    }
 
 @Composable
 private fun HistoryScreen() {
