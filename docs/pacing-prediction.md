@@ -37,3 +37,25 @@ heart-rate cross-correlation.
 - `PacingPredictionEngine` is a pure Kotlin module with unit tests.
 - The workout screen now shows predictive action, estimated rise rate, cadence,
   and expected time to the zone ceiling.
+
+## Floating zone bar reference
+
+Floating mode uses an ambient-light zone bar instead of a text-only pill:
+
+- The bar is split into colored Z1-Z5 sections.
+- Non-target zones are dimmed so the runner can focus on the active segment.
+- The current target zone has a soft glow halo.
+- Current heart rate is shown by a white vertical indicator moving across the
+  bar from the configured minimum to maximum BPM range.
+- A compact label shows BPM, target zone, and the current predictive action.
+
+Alert styling:
+
+- Below target / speed up: blue ambient glow, short rising beep, two short
+  vibrations.
+- In target / maintain: green glow, no repeating sound, very light confirmation
+  vibration.
+- Predictive slow down: amber glow, softer warning beep pair, medium vibration
+  pattern.
+- Over upper bound / slow now: red glow, stronger alarm tone, long-pulse
+  vibration pattern.
