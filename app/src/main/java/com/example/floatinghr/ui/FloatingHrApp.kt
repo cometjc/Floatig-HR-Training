@@ -582,7 +582,7 @@ private fun HistoryScreen() {
                     Text("Durchschn. bpm", color = MutedText)
                 }
             }
-            Divider(color = Color(0xFFBBBBBB), thickness = 1.dp)
+            HorizontalDivider(color = Color(0xFFBBBBBB), thickness = 1.dp)
         }
     }
 }
