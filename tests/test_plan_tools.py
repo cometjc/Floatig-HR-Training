@@ -126,6 +126,23 @@ class PlanToolsTest(unittest.TestCase):
             "# Pending implementation plan\n\nplan-002-beta:\n    Depends on alpha.\n",
         )
 
+    def test_done_accepts_plan_number_prefix(self) -> None:
+        self.write_plan(
+            """
+            # Pending implementation plan
+
+            plan-001-alpha:
+                First summary.
+            """
+        )
+        spec_path = self.write_spec("feature.md", "Alpha is implemented here.\n")
+
+        with mock.patch.object(plan_tools, "changed_spec_paths", return_value=[spec_path]):
+            result, output = self.run_done("plan-001")
+
+        self.assertEqual(result, 0)
+        self.assertIn("Removed plan-001-alpha", output)
+
     def test_changed_spec_paths_collects_staged_and_unstaged_specs(self) -> None:
         completed = subprocess.CompletedProcess(
             args=["git", "status", "--short", "--", "docs/specs"],

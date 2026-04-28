@@ -85,13 +85,22 @@ def resolve_target(entries: list[PlanEntry], raw: str) -> PlanEntry:
     if exact:
         return exact[0]
 
+    prefixed = [entry for entry in entries if entry.target.startswith(f"{raw}-")]
+    if len(prefixed) == 1:
+        return prefixed[0]
+    if len(prefixed) > 1:
+        raise SystemExit(f"Ambiguous target prefix '{raw}': {[entry.target for entry in prefixed]}")
+
     suffix = [entry for entry in entries if entry.target.endswith(f"-{raw}")]
     if len(suffix) == 1:
         return suffix[0]
     if len(suffix) > 1:
         raise SystemExit(f"Ambiguous target keyword '{raw}': {[entry.target for entry in suffix]}")
 
-    raise SystemExit(f"Plan target not found: {raw}")
+    raise SystemExit(
+        "Plan target not found: "
+        f"{raw}. Use the full target, a `plan-NNN` prefix, or the keyword suffix."
+    )
 
 
 def spec_matches(keyword: str) -> list[Path]:
