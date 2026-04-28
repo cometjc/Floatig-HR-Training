@@ -21,15 +21,17 @@ The overlay is an ambient zone bar displayed above all other apps.
 ## Implementation
 
 - `FloatingZoneBarView` — native `View` drawing the bar, zones, glow, and indicator.
-- `FloatingHeartRateService` — overlay service; receives intent extras, triggers
+- `FloatingHeartRateService` — overlay service; subscribes to the
+  `centralize-workout-state` shared workout `StateFlow`, triggers
   sound/vibration, creates/updates the view.
 
-Intent extras:
+Legacy intent extras still supported as fallback:
 - `EXTRA_BPM` — current BPM integer
 - `EXTRA_TARGET_ZONE_ID` — target zone (Z1–Z5)
 - `EXTRA_DECISION` — pacing decision string
 
-Current defaults (no live BLE data yet): BPM 127, target Z2, decision Maintain.
+Current defaults before a workout starts (no live BLE data yet): BPM 127,
+target Z2, decision Maintain.
 
 ## Alert model
 

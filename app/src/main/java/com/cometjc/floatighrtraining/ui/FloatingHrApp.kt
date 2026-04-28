@@ -64,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -91,8 +92,6 @@ import com.cometjc.floatighrtraining.model.HeartRateZone
 import com.cometjc.floatighrtraining.model.TrainingPlan
 import com.cometjc.floatighrtraining.model.defaultZones
 import com.cometjc.floatighrtraining.prediction.PacingDecision
-import com.cometjc.floatighrtraining.prediction.PacingPredictionEngine
-import com.cometjc.floatighrtraining.prediction.TrainingTelemetrySample
 import com.cometjc.floatighrtraining.service.FloatingHeartRateService
 import com.cometjc.floatighrtraining.service.HeartRateForegroundService
 import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
@@ -126,6 +125,7 @@ fun FloatingHrApp() {
             if (running) {
                 WorkoutScreen(training = training, onStop = {
                     running = false
+                    HeartRateForegroundService.stopSession()
                     context.stopService(Intent(context, FloatingHeartRateService::class.java))
                     context.stopService(Intent(context, HeartRateForegroundService::class.java))
                     SentryTelemetry.instance.monitoringServicesStopped()
@@ -154,7 +154,7 @@ fun FloatingHrApp() {
                     ) {
                         when (navigationState.topLevelDestination) {
                             AppTopLevelDestination.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
-                                startMonitoringServices(context)
+                                startMonitoringServices(context, training)
                                 running = true
                             }, trainingDestination = navigationState.trainingDestination, onShowPlans = {
                                 navigationState = navigationState.showTrainingPlans()
@@ -173,9 +173,10 @@ fun FloatingHrApp() {
     }
 }
 
-private fun startMonitoringServices(context: Context) {
+private fun startMonitoringServices(context: Context, training: TrainingPlan) {
     val overlayPermissionGranted = Settings.canDrawOverlays(context)
     SentryTelemetry.instance.monitoringServicesStarting(overlayPermissionGranted)
+    HeartRateForegroundService.startSession(training = training)
 
     val foregroundIntent = Intent(context, HeartRateForegroundService::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -530,38 +531,22 @@ private fun combinedPadding(
 
 @Composable
 private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
-    var bpm by remember { mutableIntStateOf(127) }
-    var cadence by remember { mutableIntStateOf(166) }
-    var elapsedSeconds by remember { mutableIntStateOf(0) }
     var paused by remember { mutableStateOf(false) }
-    val zone = training.segments.first().zone
-    val state = AlertState.fromBpm(bpm, zone)
-    val predictionEngine = remember { PacingPredictionEngine() }
-    val samples = remember {
-        mutableStateOf(
-            listOf(
-                TrainingTelemetrySample(0, 113, 156),
-                TrainingTelemetrySample(15, 116, 160),
-                TrainingTelemetrySample(30, 119, 164),
-                TrainingTelemetrySample(45, 122, 168),
-                TrainingTelemetrySample(60, 125, 170),
-                TrainingTelemetrySample(75, 127, 170)
-            )
-        )
-    }
-    val prediction = predictionEngine.predict(
-        samples = samples.value,
-        targetMinBpm = zone.minBpm,
-        targetMaxBpm = zone.maxBpm
-    )
+    val sessionState by HeartRateForegroundService.workoutSessionState.collectAsState()
+    val zone = sessionState.currentSegment.zone
+    val prediction = sessionState.prediction
 
     LaunchedEffect(paused) {
         while (!paused) {
             delay(1800)
-            elapsedSeconds += 2
-            cadence = (cadence + listOf(-1, 0, 1, 2).random()).coerceIn(150, 184)
-            bpm = (bpm + listOf(0, 1, 1, 2, -1).random()).coerceIn(110, 134)
-            samples.value = (samples.value + TrainingTelemetrySample(elapsedSeconds.toLong(), bpm, cadence)).takeLast(24)
+            val current = HeartRateForegroundService.workoutSessionState.value
+            if (!current.isRunning) break
+
+            HeartRateForegroundService.recordTelemetry(
+                bpm = (current.bpm + listOf(0, 1, 1, 2, -1).random()).coerceIn(110, 134),
+                cadence = (current.cadence + listOf(-1, 0, 1, 2).random()).coerceIn(150, 184),
+                elapsedSeconds = current.elapsedSeconds + 2
+            )
         }
     }
 
@@ -580,12 +565,17 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
             Spacer(Modifier.height(28.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("‹  00:19", color = Color.White.copy(alpha = 0.85f), fontSize = 18.sp, modifier = Modifier.weight(1f))
-                Text("Segment 1/${training.totalSegments}", color = Color.White.copy(alpha = 0.75f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Segment ${sessionState.currentSegmentIndex + 1}/${sessionState.totalSegments.coerceAtLeast(training.totalSegments)}",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Text("  🔔  ▸", color = Color.White.copy(alpha = 0.75f), fontSize = 18.sp, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             }
             Spacer(Modifier.height(104.dp))
-            HeartGauge(bpm = bpm)
-            Text("$bpm", color = Color.White, fontSize = 104.sp, fontWeight = FontWeight.Bold)
+            HeartGauge(bpm = sessionState.bpm)
+            Text("${sessionState.bpm}", color = Color.White, fontSize = 104.sp, fontWeight = FontWeight.Bold)
             Text("BPM", color = MutedText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
@@ -606,14 +596,24 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
                 textAlign = TextAlign.Center
             )
             Text(
-                "步頻 ${cadence} spm · 上升 ${"%.1f".format(prediction.heartRateSlopeBpmPerMinute)} bpm/min",
+                "步頻 ${sessionState.cadence} spm · 上升 ${"%.1f".format(prediction.heartRateSlopeBpmPerMinute)} bpm/min",
                 color = MutedText
             )
             Text("Nächstes: 1m Z3 Tempo", color = MutedText)
             Spacer(Modifier.weight(1f))
-            Text("14:41", color = Color.White.copy(alpha = 0.75f), fontSize = 52.sp, fontWeight = FontWeight.Bold)
+            Text(
+                formatClock(sessionState.remainingSeconds),
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 52.sp,
+                fontWeight = FontWeight.Bold
+            )
             Box(Modifier.fillMaxWidth(0.86f).height(6.dp).clip(CircleShape).background(Color(0xFF2D3438))) {
-                Box(Modifier.fillMaxWidth(0.02f).height(6.dp).background(Cyan))
+                Box(
+                    Modifier
+                        .fillMaxWidth(progressFraction(training, sessionState.elapsedSeconds))
+                        .height(6.dp)
+                        .background(Cyan)
+                )
             }
             Spacer(Modifier.height(74.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -627,7 +627,9 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
                     Text(if (paused) "WEITER" else "PAUSE", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
                 Button(
-                    onClick = onStop,
+                    onClick = {
+                        onStop()
+                    },
                     modifier = Modifier.weight(1f).height(70.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Danger, contentColor = Color.Black)
@@ -640,6 +642,17 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
             Spacer(Modifier.height(10.dp))
         }
     }
+}
+
+private fun progressFraction(training: TrainingPlan, elapsedSeconds: Int): Float {
+    if (training.totalSeconds <= 0) return 0f
+    return (elapsedSeconds.toFloat() / training.totalSeconds.toFloat()).coerceIn(0f, 1f)
+}
+
+private fun formatClock(totalSeconds: Int): String {
+    val minutes = (totalSeconds / 60).coerceAtLeast(0)
+    val seconds = (totalSeconds % 60).coerceAtLeast(0)
+    return "%02d:%02d".format(minutes, seconds)
 }
 
 @Composable

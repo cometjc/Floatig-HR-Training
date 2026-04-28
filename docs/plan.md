@@ -21,25 +21,19 @@ Planning notes:
 
 ---
 
-plan-001-centralize-workout-state:
-	Add a live workout StateFlow owned by the foreground service.
-	Replace duplicated simulated state in the UI and overlay with a single shared
-	source: connected device, current BPM, current cadence, current segment,
-	current prediction, elapsed/remaining time.
-
-plan-002-wire-ble-hr-data: plan-001-centralize-workout-state
+plan-002-wire-ble-hr-data:
 	Create an app-level HeartRateBleController owning HeartRateBleClient.
 	Connect the scan button to BLE scan state. Allow selecting and connecting a
 	device. Feed live HR samples into the StateFlow, foreground notification,
 	floating overlay, and workout history recorder. Add reconnection handling for
 	Polar H10 disconnections.
 
-plan-003-add-cadence-data: plan-001-centralize-workout-state
+plan-003-add-cadence-data:
 	Integrate Android step counter or BLE foot pod as a cadence source. Normalize
 	cadence into timestamped TrainingTelemetrySample. Align HR and cadence sampling
 	clocks. Record cadence history for lag learning.
 
-plan-004-persist-data: plan-001-centralize-workout-state
+plan-004-persist-data:
 	DataStore: max HR, custom zone ranges, alert preferences, overlay preferences.
 	Room: workout sessions, HR/cadence samples, learned lag estimates, training
 	plans and segments.

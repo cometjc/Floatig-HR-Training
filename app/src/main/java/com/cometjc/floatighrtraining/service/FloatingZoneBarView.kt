@@ -10,7 +10,9 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import com.cometjc.floatighrtraining.model.defaultZones
 import com.cometjc.floatighrtraining.prediction.PacingDecision
+import com.cometjc.floatighrtraining.workout.WorkoutSessionState
 import kotlin.math.roundToInt
 
 data class FloatingZoneSegment(
@@ -176,6 +178,25 @@ fun alertGlowColor(decision: PacingDecision): Int = when (decision) {
     PacingDecision.Maintain -> Color.rgb(55, 201, 107)
     PacingDecision.SlowDownSoon -> Color.rgb(255, 179, 0)
     PacingDecision.SlowDownNow -> Color.rgb(255, 69, 58)
+}
+
+fun WorkoutSessionState.toFloatingZoneBarState(): FloatingZoneBarState {
+    val zonesById = defaultZones().associateBy { it.id }
+    val targetZone = currentSegment.zone
+    val overlayZones = DefaultFloatingZones.map { zone ->
+        val source = zonesById[zone.id]
+        if (source == null) {
+            zone
+        } else {
+            zone.copy(minBpm = source.minBpm, maxBpm = source.maxBpm)
+        }
+    }
+    return FloatingZoneBarState(
+        bpm = bpm,
+        targetZoneId = targetZone.id,
+        decision = prediction.decision,
+        zones = overlayZones
+    )
 }
 
 val DefaultFloatingZones = listOf(
