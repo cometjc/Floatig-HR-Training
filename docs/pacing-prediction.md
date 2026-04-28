@@ -25,11 +25,11 @@ heart-rate cross-correlation.
 
 ## Alert timing
 
-- `SlowNow`: projected BPM reaches or exceeds the zone max within the learned
-  lag window. Use visual red/orange cue, sound, and vibration.
-- `PrepareToSlow`: projected BPM is close to the ceiling. Use a softer visual
-  cue before the stronger alert.
-- `Hold`: current and projected BPM are safely inside the target zone.
+- `SlowDownNow`: current BPM has reached or exceeded the zone max. Use the
+  strongest visual, sound, and vibration cue.
+- `SlowDownSoon`: projected BPM is close to or crossing the ceiling within the
+  learned lag window. Use a softer early-warning cue.
+- `Maintain`: current and projected BPM are safely inside the target zone.
 - `SpeedUp`: BPM is below the zone minimum and not rising fast enough.
 
 ## Current implementation
