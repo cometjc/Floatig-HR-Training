@@ -16,12 +16,18 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -73,8 +79,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.floatinghr.data.SampleRepository
@@ -123,6 +131,7 @@ fun FloatingHrApp() {
             } else {
                 Scaffold(
                     containerColor = DarkBackground,
+                    contentWindowInsets = WindowInsets.safeDrawing,
                     bottomBar = {
                         NavigationBar(containerColor = Color(0xEE111113)) {
                             AppTab.entries.forEach { tab ->
@@ -136,14 +145,18 @@ fun FloatingHrApp() {
                         }
                     }
                 ) { innerPadding ->
-                    Box(Modifier.padding(innerPadding)) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .consumeWindowInsets(innerPadding)
+                    ) {
                         when (selectedTab) {
-                            AppTab.Training -> TrainingHome(onStart = {
+                            AppTab.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
                                 startMonitoringServices(context)
                                 running = true
                             })
-                            AppTab.History -> HistoryScreen()
-                            AppTab.Settings -> SettingsScreen()
+                            AppTab.History -> HistoryScreen(scaffoldPadding = innerPadding)
+                            AppTab.Settings -> SettingsScreen(scaffoldPadding = innerPadding)
                         }
                     }
                 }
@@ -179,16 +192,30 @@ private enum class AppTab(val label: String, val icon: androidx.compose.ui.graph
 }
 
 @Composable
-private fun TrainingHome(onStart: () -> Unit) {
+private fun TrainingHome(scaffoldPadding: PaddingValues, onStart: () -> Unit) {
     val devices = remember { SampleRepository.devices }
     val training = remember { SampleRepository.trainingPlans.first() }
     var showPlans by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
+    val layoutDirection = LocalLayoutDirection.current
+    val listPadding = combinedPadding(
+        base = scaffoldPadding,
+        horizontal = 18.dp,
+        top = 18.dp,
+        bottom = 120.dp
+    )
+    val ctaStartPadding = scaffoldPadding.calculateStartPadding(layoutDirection) + 26.dp
+    val ctaEndPadding = scaffoldPadding.calculateEndPadding(layoutDirection) + 26.dp
+    val ctaBottomPadding = scaffoldPadding.calculateBottomPadding() + 26.dp
 
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(scaffoldPadding)
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(18.dp),
+            contentPadding = listPadding,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item {
@@ -259,14 +286,17 @@ private fun TrainingHome(onStart: () -> Unit) {
                     textAlign = TextAlign.Center
                 )
             }
-            item { Spacer(Modifier.height(120.dp)) }
         }
 
         Button(
             onClick = onStart,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(26.dp)
+                .padding(
+                    start = ctaStartPadding,
+                    end = ctaEndPadding,
+                    bottom = ctaBottomPadding
+                )
                 .fillMaxWidth()
                 .height(62.dp),
             shape = RoundedCornerShape(14.dp),
@@ -464,6 +494,22 @@ private fun Stepper(label: String, value: Int) {
 }
 
 @Composable
+private fun combinedPadding(
+    base: PaddingValues,
+    horizontal: Dp = 0.dp,
+    top: Dp = 0.dp,
+    bottom: Dp = 0.dp
+): PaddingValues {
+    val layoutDirection = LocalLayoutDirection.current
+    return PaddingValues(
+        start = base.calculateStartPadding(layoutDirection) + horizontal,
+        top = base.calculateTopPadding() + top,
+        end = base.calculateEndPadding(layoutDirection) + horizontal,
+        bottom = base.calculateBottomPadding() + bottom
+    )
+}
+
+@Composable
 private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
     var bpm by remember { mutableIntStateOf(127) }
     var cadence by remember { mutableIntStateOf(166) }
@@ -504,9 +550,14 @@ private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
         Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Color(0xFF0E3A4D), DarkBackground)))
-            .padding(22.dp)
     ) {
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Spacer(Modifier.height(28.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("‹  00:19", color = Color.White.copy(alpha = 0.85f), fontSize = 18.sp, modifier = Modifier.weight(1f))
@@ -621,10 +672,12 @@ private val PacingDecision.color: Color
     }
 
 @Composable
-private fun HistoryScreen() {
+private fun HistoryScreen(scaffoldPadding: PaddingValues) {
     LazyColumn(
-        contentPadding = PaddingValues(top = 58.dp),
-        modifier = Modifier.fillMaxSize()
+        contentPadding = combinedPadding(base = scaffoldPadding, top = 58.dp, bottom = 24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(scaffoldPadding)
     ) {
         item {
             Text("Verlauf", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -647,13 +700,20 @@ private fun HistoryScreen() {
 }
 
 @Composable
-private fun SettingsScreen() {
+private fun SettingsScreen(scaffoldPadding: PaddingValues) {
     var customZones by remember { mutableStateOf(false) }
     var maxHr by remember { mutableIntStateOf(183) }
     LazyColumn(
-        contentPadding = PaddingValues(horizontal = 26.dp, vertical = 58.dp),
+        contentPadding = combinedPadding(
+            base = scaffoldPadding,
+            horizontal = 26.dp,
+            top = 58.dp,
+            bottom = 24.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(22.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .consumeWindowInsets(scaffoldPadding)
     ) {
         item {
             Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
