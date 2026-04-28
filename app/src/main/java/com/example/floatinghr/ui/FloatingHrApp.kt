@@ -95,6 +95,7 @@ import com.example.floatinghr.prediction.PacingPredictionEngine
 import com.example.floatinghr.prediction.TrainingTelemetrySample
 import com.example.floatinghr.service.FloatingHeartRateService
 import com.example.floatinghr.service.HeartRateForegroundService
+import com.example.floatinghr.telemetry.SentryTelemetry
 import kotlinx.coroutines.delay
 
 private val DarkBackground = Color(0xFF050607)
@@ -127,6 +128,7 @@ fun FloatingHrApp() {
                     running = false
                     context.stopService(Intent(context, FloatingHeartRateService::class.java))
                     context.stopService(Intent(context, HeartRateForegroundService::class.java))
+                    SentryTelemetry.instance.monitoringServicesStopped()
                 })
             } else {
                 Scaffold(
@@ -172,6 +174,9 @@ fun FloatingHrApp() {
 }
 
 private fun startMonitoringServices(context: Context) {
+    val overlayPermissionGranted = Settings.canDrawOverlays(context)
+    SentryTelemetry.instance.monitoringServicesStarting(overlayPermissionGranted)
+
     val foregroundIntent = Intent(context, HeartRateForegroundService::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         context.startForegroundService(foregroundIntent)
@@ -179,9 +184,11 @@ private fun startMonitoringServices(context: Context) {
         context.startService(foregroundIntent)
     }
 
-    if (Settings.canDrawOverlays(context)) {
+    if (overlayPermissionGranted) {
         context.startService(Intent(context, FloatingHeartRateService::class.java))
+        SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = true)
     } else {
+        SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = false)
         context.startActivity(
             Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
