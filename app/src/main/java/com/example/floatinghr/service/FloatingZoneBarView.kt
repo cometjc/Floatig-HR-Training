@@ -61,7 +61,6 @@ class FloatingZoneBarView @JvmOverloads constructor(
     private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private var state = FloatingZoneBarState(
         bpm = 127,
@@ -71,7 +70,6 @@ class FloatingZoneBarView @JvmOverloads constructor(
 
     init {
         setLayerType(LAYER_TYPE_SOFTWARE, null)
-        backgroundPaint.color = Color.argb(214, 8, 10, 12)
         textPaint.color = Color.WHITE
         textPaint.textSize = 34f
         textPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -92,23 +90,17 @@ class FloatingZoneBarView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val corner = 34f
-        rect.set(0f, 0f, width.toFloat(), height.toFloat())
-        canvas.drawRoundRect(rect, corner, corner, backgroundPaint)
-
         val zones = state.zones
         if (zones.isEmpty()) return
-        val bpmRange = zones.first().minBpm..zones.last().maxBpm
         val barLeft = 38f
         val barTop = 54f
         val barRight = width - 38f
         val barBottom = 82f
-        val barWidth = barRight - barLeft
         val radius = 14f
 
         zones.forEach { zone ->
-            val left = barLeft + ((zone.minBpm - bpmRange.first).toFloat() / bpmRange.span()) * barWidth
-            val right = barLeft + ((zone.maxBpm - bpmRange.first).toFloat() / bpmRange.span()) * barWidth
+            val left = FloatingZoneBarGeometry.positionForBpm(zone.minBpm, zones, barLeft, barRight)
+            val right = FloatingZoneBarGeometry.positionForBpm(zone.maxBpm, zones, barLeft, barRight)
             val active = zone.id == state.targetZoneId
             barPaint.shader = LinearGradient(
                 left,
@@ -132,8 +124,7 @@ class FloatingZoneBarView @JvmOverloads constructor(
         barPaint.shader = null
         barPaint.alpha = 255
 
-        val indicatorX = barLeft + ((state.bpm.coerceIn(bpmRange.first, bpmRange.last) - bpmRange.first).toFloat() /
-            bpmRange.span()) * barWidth
+        val indicatorX = FloatingZoneBarGeometry.positionForBpm(state.bpm, zones, barLeft, barRight)
         indicatorPaint.setShadowLayer(12f, 0f, 0f, Color.WHITE)
         canvas.drawLine(indicatorX, barTop - 14f, indicatorX, barBottom + 14f, indicatorPaint)
 
@@ -145,8 +136,6 @@ class FloatingZoneBarView @JvmOverloads constructor(
         textPaint.color = Color.WHITE
     }
 
-    private fun IntRange.span(): Float = (last - first).coerceAtLeast(1).toFloat()
-
     private fun lighten(color: Int, amount: Float): Int {
         val red = Color.red(color)
         val green = Color.green(color)
@@ -156,6 +145,22 @@ class FloatingZoneBarView @JvmOverloads constructor(
             (green + (255 - green) * amount).roundToInt(),
             (blue + (255 - blue) * amount).roundToInt()
         )
+    }
+}
+
+object FloatingZoneBarGeometry {
+    fun positionForBpm(
+        bpm: Int,
+        zones: List<FloatingZoneSegment>,
+        barLeft: Float,
+        barRight: Float
+    ): Float {
+        if (zones.isEmpty()) return barLeft
+        val minBpm = zones.first().minBpm
+        val maxBpm = zones.last().maxBpm
+        val span = (maxBpm - minBpm).coerceAtLeast(1).toFloat()
+        val fraction = (bpm.coerceIn(minBpm, maxBpm) - minBpm) / span
+        return barLeft + fraction * (barRight - barLeft)
     }
 }
 
@@ -174,9 +179,9 @@ fun alertGlowColor(decision: PacingDecision): Int = when (decision) {
 }
 
 val DefaultFloatingZones = listOf(
-    FloatingZoneSegment("Z1", 0, 110, Color.rgb(109, 115, 119)),
-    FloatingZoneSegment("Z2", 110, 128, Color.rgb(79, 195, 247)),
-    FloatingZoneSegment("Z3", 128, 146, Color.rgb(73, 194, 100)),
-    FloatingZoneSegment("Z4", 146, 165, Color.rgb(255, 112, 67)),
-    FloatingZoneSegment("Z5", 165, 183, Color.rgb(126, 87, 194))
+    FloatingZoneSegment("Z1", 91, 110, 0xFF6D7377.toInt()),
+    FloatingZoneSegment("Z2", 110, 128, 0xFF4FC3F7.toInt()),
+    FloatingZoneSegment("Z3", 128, 146, 0xFF49C264.toInt()),
+    FloatingZoneSegment("Z4", 146, 165, 0xFFFF7043.toInt()),
+    FloatingZoneSegment("Z5", 165, 183, 0xFF7E57C2.toInt())
 )
