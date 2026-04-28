@@ -22,3 +22,14 @@
   - spec 已寫但實作不符
   - 實作已有但 spec 未記錄
   - 哪些 plan 可因 spec 已落地而標記完成
+
+## 開發工作區
+
+- 預設使用 repo 內的 `.worktrees/` 作為隔離開發目錄。
+- `.worktrees/` 必須保持在 `.gitignore` 中；建立新的實作分支前先確認沒有被移除。
+
+## Android 本機環境
+
+- 本專案建置與測試依賴 Android SDK `platforms;android-35`、`build-tools;35.0.0`、`platform-tools`。
+- 若 Gradle 出現 `SDK location not found`，優先檢查 `local.properties` 或 `ANDROID_HOME` / `ANDROID_SDK_ROOT`。
+- `local.properties` 屬於本機檔案，不提交；需要時可設為 `sdk.dir=/home/jethro/Android/Sdk`。

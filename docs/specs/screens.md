@@ -55,7 +55,11 @@ Elements:
 - Segment remaining time and progress bar
 - Pause and stop buttons
 
-Status: implemented with simulated BPM/cadence. Predictive pacing engine wired.
+Status: implemented with `centralize-workout-state` via a shared workout
+`StateFlow` owned by `HeartRateForegroundService`. The workout screen,
+foreground notification, and floating overlay now read the same current BPM,
+cadence, current segment, prediction, and elapsed/remaining time. Live BLE
+input is still pending; simulated telemetry currently feeds the shared state.
 
 ## History
 

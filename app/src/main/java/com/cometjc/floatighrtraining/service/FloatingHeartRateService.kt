@@ -16,6 +16,12 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
 import com.cometjc.floatighrtraining.prediction.PacingDecision
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class FloatingHeartRateService : Service() {
     private var windowManager: WindowManager? = null
@@ -23,8 +29,21 @@ class FloatingHeartRateService : Service() {
     private var layoutParams: WindowManager.LayoutParams? = null
     private var lastAlertDecision: PacingDecision? = null
     private var lastAlertAtMillis: Long = 0
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        serviceScope.launch {
+            HeartRateForegroundService.workoutSessionState.collectLatest { session ->
+                if (!session.isRunning) return@collectLatest
+                val state = session.toFloatingZoneBarState()
+                showOrUpdateOverlay(state)
+                maybeAlert(state.decision)
+            }
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!Settings.canDrawOverlays(this)) {
@@ -32,7 +51,8 @@ class FloatingHeartRateService : Service() {
             return START_NOT_STICKY
         }
 
-        val state = FloatingZoneBarState.fromIntent(intent)
+        val session = HeartRateForegroundService.workoutSessionState.value
+        val state = if (session.isRunning) session.toFloatingZoneBarState() else FloatingZoneBarState.fromIntent(intent)
         showOrUpdateOverlay(state)
         maybeAlert(state.decision)
         return START_STICKY
@@ -41,6 +61,7 @@ class FloatingHeartRateService : Service() {
     override fun onDestroy() {
         overlayView?.let { windowManager?.removeView(it) }
         overlayView = null
+        serviceScope.cancel()
         super.onDestroy()
     }
 

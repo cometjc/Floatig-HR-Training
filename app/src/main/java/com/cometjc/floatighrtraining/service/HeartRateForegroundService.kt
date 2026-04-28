@@ -9,22 +9,42 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.cometjc.floatighrtraining.R
+import com.cometjc.floatighrtraining.model.TrainingPlan
+import com.cometjc.floatighrtraining.workout.WorkoutSessionState
+import com.cometjc.floatighrtraining.workout.WorkoutSessionStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class HeartRateForegroundService : Service() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
         startForeground(NOTIFICATION_ID, notification("Waiting for heart rate belt"))
+        serviceScope.launch {
+            sessionStore.state.collectLatest { state ->
+                startForeground(NOTIFICATION_ID, notification(state.notificationText()))
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val bpm = intent?.getIntExtra(EXTRA_BPM, 0)?.takeIf { it > 0 }
-        val state = intent?.getStringExtra(EXTRA_STATE) ?: "Training active"
-        startForeground(NOTIFICATION_ID, notification(bpm?.let { "$it BPM - $state" } ?: state))
+        val state = sessionStore.state.value
+        startForeground(NOTIFICATION_ID, notification(state.notificationText()))
         return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
 
     private fun notification(text: String): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
@@ -51,5 +71,25 @@ class HeartRateForegroundService : Service() {
         const val EXTRA_STATE = "state"
         private const val CHANNEL_ID = "heart_rate_monitor"
         private const val NOTIFICATION_ID = 1001
+        private val sessionStore = WorkoutSessionStore()
+
+        val workoutSessionState = sessionStore.state
+
+        fun startSession(training: TrainingPlan, connectedDeviceName: String? = null) {
+            sessionStore.start(training, connectedDeviceName)
+        }
+
+        fun recordTelemetry(bpm: Int, cadence: Int, elapsedSeconds: Int) {
+            sessionStore.recordTelemetry(bpm, cadence, elapsedSeconds)
+        }
+
+        fun stopSession() {
+            sessionStore.stop()
+        }
     }
+}
+
+private fun WorkoutSessionState.notificationText(): String {
+    if (!isRunning) return "Waiting for heart rate belt"
+    return "${bpm} BPM - ${alertState.label}"
 }
