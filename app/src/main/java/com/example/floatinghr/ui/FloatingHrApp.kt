@@ -106,7 +106,7 @@ private val Danger = Color(0xFFFF453A)
 
 @Composable
 fun FloatingHrApp() {
-    var selectedTab by remember { mutableStateOf(AppTab.Training) }
+    var navigationState by remember { mutableStateOf(AppNavigationState()) }
     var running by remember { mutableStateOf(false) }
     val training = remember { SampleRepository.trainingPlans.first() }
     val context = LocalContext.current
@@ -134,10 +134,10 @@ fun FloatingHrApp() {
                     contentWindowInsets = WindowInsets.safeDrawing,
                     bottomBar = {
                         NavigationBar(containerColor = Color(0xEE111113)) {
-                            AppTab.entries.forEach { tab ->
+                            AppTopLevelDestination.entries.forEach { tab ->
                                 NavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
+                                    selected = navigationState.topLevelDestination == tab,
+                                    onClick = { navigationState = navigationState.selectTopLevel(tab) },
                                     icon = { Icon(tab.icon, contentDescription = tab.label) },
                                     label = { Text(tab.label) }
                                 )
@@ -150,13 +150,19 @@ fun FloatingHrApp() {
                             .fillMaxSize()
                             .consumeWindowInsets(innerPadding)
                     ) {
-                        when (selectedTab) {
-                            AppTab.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
+                        when (navigationState.topLevelDestination) {
+                            AppTopLevelDestination.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
                                 startMonitoringServices(context)
                                 running = true
+                            }, trainingDestination = navigationState.trainingDestination, onShowPlans = {
+                                navigationState = navigationState.showTrainingPlans()
+                            }, onEditPlan = {
+                                navigationState = navigationState.editTrainingPlan()
+                            }, onDismissTrainingDestination = {
+                                navigationState = navigationState.dismissTrainingDestination()
                             })
-                            AppTab.History -> HistoryScreen(scaffoldPadding = innerPadding)
-                            AppTab.Settings -> SettingsScreen(scaffoldPadding = innerPadding)
+                            AppTopLevelDestination.History -> HistoryScreen(scaffoldPadding = innerPadding)
+                            AppTopLevelDestination.Settings -> SettingsScreen(scaffoldPadding = innerPadding)
                         }
                     }
                 }
@@ -185,18 +191,17 @@ private fun startMonitoringServices(context: Context) {
     }
 }
 
-private enum class AppTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Training("Training", Icons.Default.Sports),
-    History("Verlauf", Icons.Default.History),
-    Settings("Einstellungen", Icons.Default.Settings)
-}
-
 @Composable
-private fun TrainingHome(scaffoldPadding: PaddingValues, onStart: () -> Unit) {
+private fun TrainingHome(
+    scaffoldPadding: PaddingValues,
+    trainingDestination: TrainingDestination?,
+    onStart: () -> Unit,
+    onShowPlans: () -> Unit,
+    onEditPlan: () -> Unit,
+    onDismissTrainingDestination: () -> Unit
+) {
     val devices = remember { SampleRepository.devices }
     val training = remember { SampleRepository.trainingPlans.first() }
-    var showPlans by remember { mutableStateOf(false) }
-    var showEditor by remember { mutableStateOf(false) }
     val layoutDirection = LocalLayoutDirection.current
     val listPadding = combinedPadding(
         base = scaffoldPadding,
@@ -251,7 +256,7 @@ private fun TrainingHome(scaffoldPadding: PaddingValues, onStart: () -> Unit) {
                             "Wählen",
                             color = Cyan,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable { showPlans = true }
+                            modifier = Modifier.clickable { onShowPlans() }
                         )
                     }
                     Spacer(Modifier.height(14.dp))
@@ -306,11 +311,18 @@ private fun TrainingHome(scaffoldPadding: PaddingValues, onStart: () -> Unit) {
         }
     }
 
-    if (showPlans) {
-        TrainingListDialog(training, onDismiss = { showPlans = false }, onEdit = { showEditor = true })
-    }
-    if (showEditor) {
-        TrainingEditorDialog(training, onDismiss = { showEditor = false })
+    when (trainingDestination) {
+        TrainingDestination.PlanList -> {
+            TrainingListDialog(
+                training,
+                onDismiss = onDismissTrainingDestination,
+                onEdit = onEditPlan
+            )
+        }
+        TrainingDestination.PlanEditor -> {
+            TrainingEditorDialog(training, onDismiss = onDismissTrainingDestination)
+        }
+        null -> Unit
     }
 }
 
