@@ -14,6 +14,7 @@ Installed from `https://github.com/android/skills` into `.agents/skills/`:
 - `r8-analyzer`
 - `play-billing-library-version-upgrade`
 - `display-ai-glasses-with-jetpack-compose-glimmer`
+- `sentry-cli`
 
 ## Relevant guidance for this app
 
@@ -60,3 +61,75 @@ The overlay should remain ambient and glanceable:
 - Heart-rate scale starts at the Z1 minimum BPM instead of zero, so the visible
   bar represents the meaningful training range.
 - Keep non-target zones dimmed and target zone glowing.
+
+### 6. Sentry Android integration
+
+Project status:
+
+- Sentry org: `jethroyu`
+- Sentry project: `floatig-hr-training`
+- Project URL: `https://jethroyu.sentry.io/insights/projects/floatig-hr-training`
+- Platform: Android
+
+Use the project-local `sentry-cli` skill for CLI work. Prefer `sentry ... --json`
+when gathering data for agent workflows.
+
+Planned integration areas:
+
+1. **Crash and error reporting**
+   - Keep the Sentry Android SDK configured through the Android manifest.
+   - Replace wizard/demo exception capture with app-specific capture points before
+     production builds.
+   - Add targeted exception context around BLE connection, foreground service,
+     overlay permission, and training session state transitions.
+
+2. **Release and deploy tracking**
+   - Use a release value derived from `applicationId`, `versionName`, `versionCode`,
+     and git SHA.
+   - Create/finalize releases with `sentry release create`, `set-commits`, and
+     `finalize`.
+   - Record deploys for distribution channels such as local debug, internal test,
+     beta, and production.
+
+3. **ProGuard/R8 mapping upload**
+   - Use the Sentry Android Gradle plugin for release mapping UUID generation and
+     upload.
+   - Keep `includeProguardMapping` enabled for release variants.
+   - Use environment-provided auth in CI rather than committing token files.
+
+4. **Source context**
+   - Keep source context enabled for development/internal builds when useful.
+   - Revisit exposure risk before production; source context uploads source code to
+     Sentry for stack trace context.
+
+5. **Performance and tracing**
+   - Capture app start, screen interaction, foreground service startup, BLE scan /
+     connect flow, and workout start/stop timing.
+   - Start with conservative sampling outside debug builds.
+   - Add manual spans for app-specific operations that auto-instrumentation cannot
+     infer, such as heart-rate prediction updates.
+
+6. **Logcat breadcrumbs**
+   - Enable warning/error breadcrumbs for diagnostics around BLE, overlay,
+     notification, vibration, and service lifecycle issues.
+   - Avoid logging sensitive device identifiers beyond what is needed for debugging.
+
+7. **GitHub/repository integration**
+   - Connect the GitHub repository in Sentry so `set-commits --auto` can associate
+     issues with commits and releases.
+   - Until that integration exists, use `sentry release set-commits --local`.
+
+8. **Dashboards**
+   - Reuse Sentry mobile dashboards for crash-free sessions, mobile vitals, and
+     performance.
+   - Add app-specific dashboard widgets after events arrive: crash-free sessions,
+     foreground service errors, overlay permission failures, BLE connection errors,
+     app start, and workout start latency.
+
+Security notes:
+
+- Do not commit `sentry.properties`; it can contain `auth.token`.
+- Prefer `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` from local shell
+  or CI secrets.
+- Treat DSNs as public identifiers, but avoid exposing auth tokens in logs,
+  screenshots, docs, or commits.
