@@ -1,4 +1,4 @@
-package com.example.floatinghr.telemetry
+package com.cometjc.floatighrtraining.telemetry
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

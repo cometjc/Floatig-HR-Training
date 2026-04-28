@@ -1,4 +1,4 @@
-package com.example.floatinghr.telemetry
+package com.cometjc.floatighrtraining.telemetry
 
 import io.sentry.Breadcrumb
 import io.sentry.Sentry

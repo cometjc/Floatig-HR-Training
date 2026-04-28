@@ -33,11 +33,11 @@ is intentionally not committed.
 
 ### Android entry and UI
 
-- `app/src/main/java/com/example/floatinghr/MainActivity.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/MainActivity.kt`
   - Requests runtime Bluetooth/location/notification permissions.
   - Hosts the Compose app.
 
-- `app/src/main/java/com/example/floatinghr/ui/FloatingHrApp.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/ui/FloatingHrApp.kt`
   - Main Compose UI.
   - Implements:
     - Training home
@@ -52,42 +52,42 @@ is intentionally not committed.
 
 ### Data and domain
 
-- `app/src/main/java/com/example/floatinghr/model/TrainingModels.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/model/TrainingModels.kt`
   - Heart-rate zones
   - Training segments
   - Training plans
   - Workout history
   - Basic alert state
 
-- `app/src/main/java/com/example/floatinghr/data/SampleRepository.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/data/SampleRepository.kt`
   - Sample training plan, sample device, sample history.
 
-- `app/src/main/java/com/example/floatinghr/prediction/PacingPredictionEngine.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/prediction/PacingPredictionEngine.kt`
   - Pure Kotlin prediction engine.
   - Estimates HR slope.
   - Estimates cadence-to-HR lag.
   - Predicts whether the runner should speed up, maintain, slow down soon, or
     slow down immediately.
 
-- `app/src/test/java/com/example/floatinghr/prediction/PacingPredictionEngineTest.kt`
+- `app/src/test/java/com/cometjc/floatighrtraining/prediction/PacingPredictionEngineTest.kt`
   - Unit coverage for prediction decisions and lag estimation.
 
 ### BLE and services
 
-- `app/src/main/java/com/example/floatinghr/ble/HeartRateBleClient.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/ble/HeartRateBleClient.kt`
   - BLE Heart Rate Service UUID scan/connect scaffold.
   - Parses standard BLE Heart Rate Measurement characteristic.
   - Not yet wired into the Compose UI/service state.
 
-- `app/src/main/java/com/example/floatinghr/service/HeartRateForegroundService.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/service/HeartRateForegroundService.kt`
   - Foreground service scaffold for ongoing HR monitoring.
 
-- `app/src/main/java/com/example/floatinghr/service/FloatingHeartRateService.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/service/FloatingHeartRateService.kt`
   - Overlay service.
   - Creates/updates draggable floating zone bar.
   - Triggers sound and vibration patterns per pacing decision.
 
-- `app/src/main/java/com/example/floatinghr/service/FloatingZoneBarView.kt`
+- `app/src/main/java/com/cometjc/floatighrtraining/service/FloatingZoneBarView.kt`
   - Native Android `View` drawing the floating ambient zone bar.
   - Draws:
     - Z1-Z5 colored segments

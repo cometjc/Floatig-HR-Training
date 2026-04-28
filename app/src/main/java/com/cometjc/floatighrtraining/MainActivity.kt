@@ -1,4 +1,4 @@
-package com.example.floatinghr
+package com.cometjc.floatighrtraining
 
 import android.Manifest
 import android.os.Build
@@ -7,7 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import com.example.floatinghr.ui.FloatingHrApp
+import com.cometjc.floatighrtraining.ui.FloatingHrApp
 
 class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(

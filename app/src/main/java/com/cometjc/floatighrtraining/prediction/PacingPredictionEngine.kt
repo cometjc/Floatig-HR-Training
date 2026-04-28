@@ -1,4 +1,4 @@
-package com.example.floatinghr.prediction
+package com.cometjc.floatighrtraining.prediction
 
 import kotlin.math.abs
 import kotlin.math.sqrt

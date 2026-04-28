@@ -1,4 +1,4 @@
-package com.example.floatinghr.service
+package com.cometjc.floatighrtraining.service
 
 import android.app.Service
 import android.content.Context
@@ -15,7 +15,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowManager
-import com.example.floatinghr.prediction.PacingDecision
+import com.cometjc.floatighrtraining.prediction.PacingDecision
 
 class FloatingHeartRateService : Service() {
     private var windowManager: WindowManager? = null

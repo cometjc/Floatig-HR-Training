@@ -1,4 +1,4 @@
-package com.example.floatinghr.ui
+package com.cometjc.floatighrtraining.ui
 
 import android.content.Context
 import android.content.Intent
@@ -85,17 +85,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.floatinghr.data.SampleRepository
-import com.example.floatinghr.model.AlertState
-import com.example.floatinghr.model.HeartRateZone
-import com.example.floatinghr.model.TrainingPlan
-import com.example.floatinghr.model.defaultZones
-import com.example.floatinghr.prediction.PacingDecision
-import com.example.floatinghr.prediction.PacingPredictionEngine
-import com.example.floatinghr.prediction.TrainingTelemetrySample
-import com.example.floatinghr.service.FloatingHeartRateService
-import com.example.floatinghr.service.HeartRateForegroundService
-import com.example.floatinghr.telemetry.SentryTelemetry
+import com.cometjc.floatighrtraining.data.SampleRepository
+import com.cometjc.floatighrtraining.model.AlertState
+import com.cometjc.floatighrtraining.model.HeartRateZone
+import com.cometjc.floatighrtraining.model.TrainingPlan
+import com.cometjc.floatighrtraining.model.defaultZones
+import com.cometjc.floatighrtraining.prediction.PacingDecision
+import com.cometjc.floatighrtraining.prediction.PacingPredictionEngine
+import com.cometjc.floatighrtraining.prediction.TrainingTelemetrySample
+import com.cometjc.floatighrtraining.service.FloatingHeartRateService
+import com.cometjc.floatighrtraining.service.HeartRateForegroundService
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import kotlinx.coroutines.delay
 
 private val DarkBackground = Color(0xFF050607)

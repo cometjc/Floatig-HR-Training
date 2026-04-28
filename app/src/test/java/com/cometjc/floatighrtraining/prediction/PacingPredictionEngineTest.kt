@@ -1,4 +1,4 @@
-package com.example.floatinghr.prediction
+package com.cometjc.floatighrtraining.prediction
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

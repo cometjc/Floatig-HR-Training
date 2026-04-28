@@ -1,4 +1,4 @@
-package com.example.floatinghr.ui
+package com.cometjc.floatighrtraining.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

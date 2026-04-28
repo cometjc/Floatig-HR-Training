@@ -1,4 +1,4 @@
-package com.example.floatinghr.ui
+package com.cometjc.floatighrtraining.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History

@@ -1,9 +1,9 @@
-package com.example.floatinghr.data
+package com.cometjc.floatighrtraining.data
 
-import com.example.floatinghr.model.DiscoveredHeartRateDevice
-import com.example.floatinghr.model.WorkoutHistory
-import com.example.floatinghr.model.defaultZones
-import com.example.floatinghr.model.sampleTrainingPlan
+import com.cometjc.floatighrtraining.model.DiscoveredHeartRateDevice
+import com.cometjc.floatighrtraining.model.WorkoutHistory
+import com.cometjc.floatighrtraining.model.defaultZones
+import com.cometjc.floatighrtraining.model.sampleTrainingPlan
 
 object SampleRepository {
     val zones = defaultZones()

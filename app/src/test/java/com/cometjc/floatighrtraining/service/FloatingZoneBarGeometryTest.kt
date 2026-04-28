@@ -1,4 +1,4 @@
-package com.example.floatinghr.service
+package com.cometjc.floatighrtraining.service
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

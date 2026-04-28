@@ -1,4 +1,4 @@
-package com.example.floatinghr.service
+package com.cometjc.floatighrtraining.service
 
 import android.content.Context
 import android.graphics.Canvas
@@ -10,7 +10,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
-import com.example.floatinghr.prediction.PacingDecision
+import com.cometjc.floatighrtraining.prediction.PacingDecision
 import kotlin.math.roundToInt
 
 data class FloatingZoneSegment(

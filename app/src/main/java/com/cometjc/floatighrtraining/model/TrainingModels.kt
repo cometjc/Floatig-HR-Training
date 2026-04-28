@@ -1,4 +1,4 @@
-package com.example.floatinghr.model
+package com.cometjc.floatighrtraining.model
 
 import androidx.compose.ui.graphics.Color
 

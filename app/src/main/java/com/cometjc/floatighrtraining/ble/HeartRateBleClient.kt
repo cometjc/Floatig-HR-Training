@@ -1,4 +1,4 @@
-package com.example.floatinghr.ble
+package com.cometjc.floatighrtraining.ble
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -19,7 +19,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
 import androidx.core.app.ActivityCompat
-import com.example.floatinghr.model.DiscoveredHeartRateDevice
+import com.cometjc.floatighrtraining.model.DiscoveredHeartRateDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
