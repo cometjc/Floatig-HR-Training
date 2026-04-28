@@ -84,11 +84,19 @@ slope, estimates cadence-to-HR lag, projects HR forward, and emits a decision.
 
 ## Documentation
 
-- Product spec: `docs/product-spec.md`
+- Product spec: `docs/specs/product-spec.md`
 - Pending plan: `docs/plan.md`
+- Implemented specs index: `docs/specs/README.md`
 - Implemented screens spec: `docs/specs/screens.md`
 - Implemented floating overlay spec: `docs/specs/floating-overlay.md`
 - Implemented predictive pacing spec: `docs/specs/predictive-pacing.md`
-- Predictive pacing design: `docs/pacing-prediction.md`
-- UI refresh plan: `docs/android-skills-ui-refresh-plan.md`
+- Predictive pacing notes: `docs/specs/pacing-prediction.md`
 - UI reference notes: `docs/ui-reference/README.md`
+
+## Plan workflow
+
+- `just plan-ready` lists plan items in `docs/plan.md` that currently have no remaining dependencies.
+- `just plan-next` remains as a compatibility alias for `just plan-ready`.
+- `just plan-done <target-or-keyword>` removes a completed plan item and clears that target from other plan dependencies.
+- `just plan-complete <target-or-keyword>` remains as a compatibility alias for `just plan-done`.
+- `just plan-done` only succeeds when at least one file under `docs/specs/` both contains the plan keyword and is currently staged or unstaged in git.
