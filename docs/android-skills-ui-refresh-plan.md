@@ -133,3 +133,41 @@ Security notes:
   or CI secrets.
 - Treat DSNs as public identifiers, but avoid exposing auth tokens in logs,
   screenshots, docs, or commits.
+
+### 7. Prioritized build and distribution workflow
+
+Prioritize Firebase App Distribution, Sentry Releases, and GitHub build artifacts
+before ADB-based device installation. This gives safer installs, an auditable
+release trail, and a phone-friendly tester flow.
+
+Target workflow:
+
+1. **GitHub Artifact baseline**
+   - On every push and pull request, run unit tests and build a debug APK.
+   - Upload `app/build/outputs/apk/debug/app-debug.apk` as a GitHub Actions
+     artifact.
+   - Keep this step first because it does not require Firebase credentials and
+     proves CI can build the app.
+
+2. **Sentry Release tracking**
+   - Derive release as
+     `com.cometjc.floatighrtraining@<versionName>+<versionCode>-<shortSha>`.
+   - Create a Sentry release in CI after a successful build.
+   - Associate commits using `sentry release set-commits --local` until GitHub is
+     connected in Sentry, then switch to `--auto`.
+   - Finalize the release and record a deploy such as `internal-test`.
+
+3. **Firebase App Distribution**
+   - Upload the debug or internal APK to Firebase App Distribution after tests and
+     Sentry release creation pass.
+   - Use CI secrets for Firebase credentials and tester groups.
+   - Send install notifications/links to the tester phone through Firebase rather
+     than auto-installing with ADB.
+
+Implementation order:
+
+1. Add a GitHub Actions workflow for `testDebugUnitTest` and `assembleDebug`.
+2. Upload APK artifacts from the workflow.
+3. Add Sentry release/deploy steps using repository secrets.
+4. Add Firebase App Distribution upload using repository secrets.
+5. Document required secrets and local fallback commands.
