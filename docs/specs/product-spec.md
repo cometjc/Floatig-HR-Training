@@ -83,8 +83,6 @@ The app should eventually include a clear training-only disclaimer.
 
 ## Document map
 
-- Implemented screens: `docs/specs/screens.md`
-- Implemented floating overlay: `docs/specs/floating-overlay.md`
-- Implemented predictive pacing: `docs/specs/predictive-pacing.md`
-- Pending implementation plan: `docs/plan.md`
-- Additional pacing notes: `docs/pacing-prediction.md`
+- Specs index: `README.md`
+- Pending implementation plan: `../plan.md`
+- Predictive pacing notes: `pacing-prediction.md`
