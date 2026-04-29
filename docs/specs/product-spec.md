@@ -112,6 +112,7 @@ Implemented in `plan-014-firebase-distribution` (`firebase-distribution`):
 
 - Android CI now optionally publishes the debug APK to Firebase App Distribution after tests, assembly, Sentry release, and artifact upload complete on push events.
 - Distribution uses CI secrets (`FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID_ANDROID`, optional `FIREBASE_TESTER_GROUPS`) so tester notifications and install flow move through Firebase instead of manual ADB install.
+- When tester groups are not explicitly configured, CI falls back to the `internal-test` audience to keep internal rollout paths consistent.
 
 Implemented in `plan-015-ui-visual-qa` (`ui-visual-qa`):
 

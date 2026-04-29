@@ -20,9 +20,3 @@ Planning notes:
   `sentry.properties` or auth tokens.
 
 ---
-
-plan-014-firebase-distribution:
-	Upload debug/internal APK to Firebase App Distribution after CI tests and
-	Sentry release steps pass. Use CI secrets for Firebase credentials and tester
-	groups. Deliver install notifications through Firebase instead of ADB.
-
