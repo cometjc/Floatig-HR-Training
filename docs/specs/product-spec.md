@@ -108,6 +108,12 @@ Implemented in `plan-013-sentry-release-hardening` (keyword: `sentry-release-har
 - Sentry Gradle plugin now defaults to `SENTRY_UPLOAD_PROGUARD_MAPPING=false` and `SENTRY_INCLUDE_SOURCE_CONTEXT=false`, so ProGuard/R8 mapping upload and source context exposure are opt-in per environment
 - Android CI pins both policy env vars to `false` and limits the optional Sentry release creation step to push events, reducing accidental metadata publication during pull-request validation
 
+Implemented in `plan-015-ui-visual-qa` (`ui-visual-qa`):
+
+- Added `docs/ui-reference/app-screens/` as the canonical location for app-side screenshot captures used during UI visual QA.
+- Expanded `docs/ui-reference/comparison-checklist.md` with lane-level traceability rows so missing screenshots can remain auditable as `pending`.
+- Updated `docs/ui-reference/README.md` with the placeholder workflow, linking checklist and capture tracker for hand-off continuity.
+
 ## Product requirements
 
 ### Core experience

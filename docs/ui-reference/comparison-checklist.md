@@ -2,6 +2,23 @@
 
 Use this checklist when comparing screenshots of the app against the uploaded reference images.
 
+## Lane3 traceability (`plan-015`)
+
+When real screenshots are not available yet, keep placeholders in
+`docs/ui-reference/app-screens/README.md` and mark each section with the
+capture status.
+
+| Area | App screenshot | Reference source | Diff status | Follow-up |
+| --- | --- | --- | --- | --- |
+| Training Home | pending (`training-home`) | uploaded chat reference (German UI) | pending | export screenshot and compare CTA/layout spacing |
+| Training List | pending (`training-list`) | uploaded chat reference | pending | verify chips/play icon sizing |
+| Training Editor | pending (`training-editor`) | uploaded chat reference | pending | verify repeat card and segment row spacing |
+| Add / Select Segment Dialogs | pending (`add-segment-dialog`, `select-segments-dialog`) | uploaded chat reference | pending | compare modal elevation and action states |
+| History | pending (`history`) | uploaded chat reference | pending | verify row separators and column alignment |
+| Settings | pending (`settings`) | uploaded chat reference | pending | compare zone labels and control paddings |
+| Workout Screen | pending (`workout-active`) | uploaded chat reference | pending | compare gauge scale, button sizing, progress bar |
+| Floating HR Bar | pending (`floating-hr-bar`) | uploaded chat reference + behavior notes | pending | verify overlay readability on top of another app |
+
 ## Global Style
 
 - [ ] Dark / black app background.

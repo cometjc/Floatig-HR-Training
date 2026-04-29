@@ -26,11 +26,6 @@ plan-014-firebase-distribution:
 	Sentry release steps pass. Use CI secrets for Firebase credentials and tester
 	groups. Deliver install notifications through Firebase instead of ADB.
 
-plan-015-ui-visual-qa:
-	Save app screenshots under docs/ui-reference/app-screens/. Compare each screen
-	against docs/ui-reference/comparison-checklist.md. Track intentional
-	differences in docs/ui-reference/README.md instead of chat history.
-
 plan-016-sentry-dashboards:
 	After app-specific events arrive in Sentry, create dashboard widgets for
 	crash-free sessions, foreground service errors, overlay permission failures,

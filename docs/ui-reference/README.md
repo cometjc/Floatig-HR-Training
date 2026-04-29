@@ -85,6 +85,15 @@ Note: the original uploaded image binaries were not available as files in the wo
   - in target: maintain
   - too high: slow down
 
+## Traceable comparison assets
+
+- App screenshot folder: `docs/ui-reference/app-screens/`
+- Placeholder tracker (until real captures exist): `docs/ui-reference/app-screens/README.md`
+- Checklist with per-area comparison status: `docs/ui-reference/comparison-checklist.md`
+
+If the binary screenshot files are not available yet, keep entries as `pending`
+with screen IDs. This keeps the visual QA flow auditable across plan hand-offs.
+
 ## Future comparison workflow
 
 When actual screenshots are available from the app:
