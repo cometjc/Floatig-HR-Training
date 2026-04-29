@@ -21,13 +21,6 @@ Planning notes:
 
 ---
 
-plan-002-wire-ble-hr-data:
-	Create an app-level HeartRateBleController owning HeartRateBleClient.
-	Connect the scan button to BLE scan state. Allow selecting and connecting a
-	device. Feed live HR samples into the StateFlow, foreground notification,
-	floating overlay, and workout history recorder. Add reconnection handling for
-	Polar H10 disconnections.
-
 plan-003-add-cadence-data:
 	Integrate Android step counter or BLE foot pod as a cadence source. Normalize
 	cadence into timestamped TrainingTelemetrySample. Align HR and cadence sampling
@@ -43,13 +36,13 @@ plan-005-complete-training-editor: plan-004-persist-data
 	segment selection modal. Add validation: at least one segment, repeat selection
 	minimums, duration > 0.
 
-plan-006-improve-prediction: plan-002-wire-ble-hr-data plan-003-add-cadence-data
+plan-006-improve-prediction: plan-003-add-cadence-data
 	Store per-user/per-zone lag from completed workouts. Weight recent samples more
 	strongly. Detect cadence changes that haven't yet produced a HR response. Add
 	cooldown and hysteresis to prevent alert spam. Add confidence score to UI and
 	overlay. Add tests for overshoot prevention cases.
 
-plan-007-overlay-settings: plan-002-wire-ble-hr-data
+plan-007-overlay-settings:
 	Add explicit floating mode toggle in settings. Add size modes (compact /
 	standard / large). Add transparency control. Add default-location reset. Add
 	per-alert sound/vibration enable toggles. Preserve the existing ambient
@@ -77,7 +70,7 @@ plan-011-sentry-releases: plan-010-github-actions-ci
 	internal-test. Keep repository integration as a later improvement and prefer
 	CI secret-based auth only.
 
-plan-012-sentry-telemetry: plan-002-wire-ble-hr-data
+plan-012-sentry-telemetry:
 	Add targeted Sentry exception capture around BLE connection, foreground service
 	startup, overlay permission, and training session state transitions. Add manual
 	performance spans for app start, BLE scan/connect, and workout start/stop.

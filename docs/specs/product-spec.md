@@ -36,12 +36,17 @@ Implemented today:
 
 Not implemented yet:
 
-- End-to-end BLE scan/connect state in the UI
-- Live BPM flow from BLE into workout UI, foreground service, and overlay
 - Real cadence source
 - Persistence for settings, plans, or workout history
 - Fully editable and persistent training editor
 - CI distribution / release workflow
+
+Implemented in `plan-002-wire-ble-hr-data`:
+
+- Polar H10 vendored as the BLE provider submodule
+- End-to-end BLE scan/connect state in the UI
+- Live BPM flow from BLE into workout UI, foreground service, and overlay
+- Automatic reconnection through the Polar SDK
 
 ## Product requirements
 
