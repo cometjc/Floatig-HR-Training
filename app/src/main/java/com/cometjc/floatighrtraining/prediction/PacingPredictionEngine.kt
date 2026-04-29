@@ -27,7 +27,8 @@ data class PacingPrediction(
     val projectedBpm: Double,
     val secondsToUpperBound: Int?,
     val heartRateSlopeBpmPerMinute: Double,
-    val delayEstimate: HeartRateDelayEstimate
+    val delayEstimate: HeartRateDelayEstimate,
+    val confidenceScore: Float
 )
 
 data class PacingPredictionConfig(
@@ -35,12 +36,24 @@ data class PacingPredictionConfig(
     val fallbackDelaySeconds: Int = 30,
     val minSamples: Int = 4,
     val upperSafetyMarginBpm: Int = 2,
-    val minActionableSlopeBpmPerMinute: Double = 1.0
+    val minActionableSlopeBpmPerMinute: Double = 1.0,
+    val slopeRecencyHalfLifeSeconds: Double = 20.0,
+    val cadenceLeadTriggerSpm: Int = 8,
+    val cooldownSeconds: Int = 20,
+    val hysteresisBpm: Int = 2
 )
 
 class PacingPredictionEngine(
     private val config: PacingPredictionConfig = PacingPredictionConfig()
 ) {
+    private var lastDecision: PacingDecision = PacingDecision.Maintain
+    private var lastDecisionSecond: Long = Long.MIN_VALUE
+
+    fun reset() {
+        lastDecision = PacingDecision.Maintain
+        lastDecisionSecond = Long.MIN_VALUE
+    }
+
     fun predict(
         samples: List<TrainingTelemetrySample>,
         targetMinBpm: Int,
@@ -56,7 +69,8 @@ class PacingPredictionEngine(
                 projectedBpm = latest?.heartRateBpm?.toDouble() ?: 0.0,
                 secondsToUpperBound = null,
                 heartRateSlopeBpmPerMinute = 0.0,
-                delayEstimate = delay
+                delayEstimate = delay,
+                confidenceScore = 0f
             )
         }
 
@@ -71,13 +85,24 @@ class PacingPredictionEngine(
             null
         }
 
-        val decision = when {
+        val cadenceLead = cadenceLeadSignal(window)
+        val rawDecision = when {
             latest.heartRateBpm >= targetMaxBpm -> PacingDecision.SlowDownNow
             projectedBpm >= targetMaxBpm - config.upperSafetyMarginBpm &&
                 slopePerMinute >= config.minActionableSlopeBpmPerMinute -> PacingDecision.SlowDownSoon
-            latest.heartRateBpm < targetMinBpm && slopePerMinute <= 3.0 -> PacingDecision.SpeedUp
+            cadenceLead && latest.heartRateBpm >= targetMaxBpm - (config.upperSafetyMarginBpm + 4) ->
+                PacingDecision.SlowDownSoon
+            latest.heartRateBpm <= targetMinBpm - 6 &&
+                slopePerMinute <= 3.0 -> PacingDecision.SpeedUp
             else -> PacingDecision.Maintain
         }
+        val decision = applyCooldownAndHysteresis(
+            rawDecision = rawDecision,
+            elapsedSeconds = latest.elapsedSeconds,
+            projectedBpm = projectedBpm,
+            targetMaxBpm = targetMaxBpm
+        )
+        val confidenceScore = calculateConfidence(window.size, delay.confidence, slopePerMinute)
 
         return PacingPrediction(
             decision = decision,
@@ -85,7 +110,8 @@ class PacingPredictionEngine(
             projectedBpm = projectedBpm,
             secondsToUpperBound = secondsToUpperBound,
             heartRateSlopeBpmPerMinute = slopePerMinute,
-            delayEstimate = delay
+            delayEstimate = delay,
+            confidenceScore = confidenceScore
         )
     }
 
@@ -116,13 +142,66 @@ class PacingPredictionEngine(
 
     private fun heartRateSlopePerSecond(samples: List<TrainingTelemetrySample>): Double {
         if (samples.size < 2) return 0.0
-        val firstTime = samples.first().elapsedSeconds
-        val points = samples.map { (it.elapsedSeconds - firstTime).toDouble() to it.heartRateBpm.toDouble() }
-        val meanX = points.sumOf { it.first } / points.size
-        val meanY = points.sumOf { it.second } / points.size
-        val denominator = points.sumOf { (it.first - meanX) * (it.first - meanX) }
+        val firstTime = samples.first().elapsedSeconds.toDouble()
+        val latestTime = samples.last().elapsedSeconds.toDouble()
+        val weightedPoints = samples.map { sample ->
+            val x = sample.elapsedSeconds - firstTime
+            val ageSeconds = latestTime - sample.elapsedSeconds
+            val weight = kotlin.math.exp(
+                (-kotlin.math.ln(2.0) / config.slopeRecencyHalfLifeSeconds) * ageSeconds
+            )
+            Triple(x, sample.heartRateBpm.toDouble(), weight)
+        }
+        val weightSum = weightedPoints.sumOf { it.third }
+        if (weightSum == 0.0) return 0.0
+        val meanX = weightedPoints.sumOf { it.first * it.third } / weightSum
+        val meanY = weightedPoints.sumOf { it.second * it.third } / weightSum
+        val denominator = weightedPoints.sumOf { (it.first - meanX) * (it.first - meanX) * it.third }
         if (denominator == 0.0) return 0.0
-        return points.sumOf { (it.first - meanX) * (it.second - meanY) } / denominator
+        return weightedPoints.sumOf { (it.first - meanX) * (it.second - meanY) * it.third } / denominator
+    }
+
+    private fun cadenceLeadSignal(window: List<TrainingTelemetrySample>): Boolean {
+        val cadenceSamples = window.filter { it.cadenceSpm != null }
+        if (cadenceSamples.size < 2) return false
+        val first = cadenceSamples.first().cadenceSpm ?: return false
+        val latest = cadenceSamples.last().cadenceSpm ?: return false
+        return (latest - first) >= config.cadenceLeadTriggerSpm
+    }
+
+    private fun applyCooldownAndHysteresis(
+        rawDecision: PacingDecision,
+        elapsedSeconds: Long,
+        projectedBpm: Double,
+        targetMaxBpm: Int
+    ): PacingDecision {
+        val inCooldown = lastDecisionSecond != Long.MIN_VALUE &&
+            (elapsedSeconds - lastDecisionSecond) <= config.cooldownSeconds
+
+        val decision = when {
+            lastDecision in setOf(PacingDecision.SlowDownSoon, PacingDecision.SlowDownNow) &&
+                rawDecision == PacingDecision.Maintain &&
+                projectedBpm >= targetMaxBpm - config.hysteresisBpm -> PacingDecision.SlowDownSoon
+            inCooldown && lastDecision == PacingDecision.SlowDownSoon && rawDecision == PacingDecision.Maintain ->
+                PacingDecision.SlowDownSoon
+            else -> rawDecision
+        }
+
+        if (decision != lastDecision) {
+            lastDecision = decision
+            lastDecisionSecond = elapsedSeconds
+        }
+        return decision
+    }
+
+    private fun calculateConfidence(
+        sampleCount: Int,
+        delayConfidence: Float,
+        slopePerMinute: Double
+    ): Float {
+        val sampleScore = (sampleCount / 12f).coerceIn(0f, 1f)
+        val slopeScore = (abs(slopePerMinute) / 12.0).toFloat().coerceIn(0f, 1f)
+        return (sampleScore * 0.5f + delayConfidence * 0.3f + slopeScore * 0.2f).coerceIn(0f, 1f)
     }
 
     private fun nearestAtOrBefore(

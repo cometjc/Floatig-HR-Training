@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PacingPredictionEngineTest {
-    private val engine = PacingPredictionEngine()
+    private fun engine() = PacingPredictionEngine()
 
     @Test
     fun predictsSlowDownBeforeHeartRateCrossesUpperBound() {
@@ -16,7 +16,7 @@ class PacingPredictionEngineTest {
             TrainingTelemetrySample(elapsedSeconds = 45, heartRateBpm = 126, cadenceSpm = 174)
         )
 
-        val prediction = engine.predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
+        val prediction = engine().predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
 
         assertEquals(PacingDecision.SlowDownSoon, prediction.decision)
         assertTrue(prediction.secondsToUpperBound in 14..16)
@@ -32,7 +32,7 @@ class PacingPredictionEngineTest {
             TrainingTelemetrySample(elapsedSeconds = 45, heartRateBpm = 122, cadenceSpm = 165)
         )
 
-        val prediction = engine.predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
+        val prediction = engine().predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
 
         assertEquals(PacingDecision.Maintain, prediction.decision)
         assertTrue((prediction.secondsToUpperBound ?: 999) > 45)
@@ -47,7 +47,7 @@ class PacingPredictionEngineTest {
             TrainingTelemetrySample(elapsedSeconds = 45, heartRateBpm = 102, cadenceSpm = 159)
         )
 
-        val prediction = engine.predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
+        val prediction = engine().predict(samples, targetMinBpm = 110, targetMaxBpm = 128)
 
         assertEquals(PacingDecision.SpeedUp, prediction.decision)
     }
@@ -65,6 +65,51 @@ class PacingPredictionEngineTest {
             TrainingTelemetrySample(elapsedSeconds = 70, heartRateBpm = 127, cadenceSpm = 172)
         )
 
-        assertTrue(engine.estimateDelay(history).seconds in 10..90)
+        assertTrue(engine().estimateDelay(history).seconds in 10..90)
+    }
+
+    @Test
+    fun triggersSlowDownSoonOnCadenceLeadSignalNearUpperBound() {
+        val prediction = engine().predict(
+            samples = listOf(
+                TrainingTelemetrySample(elapsedSeconds = 0, heartRateBpm = 122, cadenceSpm = 158),
+                TrainingTelemetrySample(elapsedSeconds = 10, heartRateBpm = 123, cadenceSpm = 161),
+                TrainingTelemetrySample(elapsedSeconds = 20, heartRateBpm = 123, cadenceSpm = 165),
+                TrainingTelemetrySample(elapsedSeconds = 30, heartRateBpm = 124, cadenceSpm = 168)
+            ),
+            targetMinBpm = 110,
+            targetMaxBpm = 128
+        )
+
+        assertEquals(PacingDecision.SlowDownSoon, prediction.decision)
+        assertTrue(prediction.confidenceScore > 0f)
+    }
+
+    @Test
+    fun keepsSlowDownSoonDuringCooldownToPreventAlertSpam() {
+        val engine = engine()
+        val first = engine.predict(
+            samples = listOf(
+                TrainingTelemetrySample(elapsedSeconds = 0, heartRateBpm = 124, cadenceSpm = 165),
+                TrainingTelemetrySample(elapsedSeconds = 15, heartRateBpm = 126, cadenceSpm = 167),
+                TrainingTelemetrySample(elapsedSeconds = 30, heartRateBpm = 127, cadenceSpm = 170),
+                TrainingTelemetrySample(elapsedSeconds = 45, heartRateBpm = 127, cadenceSpm = 172)
+            ),
+            targetMinBpm = 110,
+            targetMaxBpm = 128
+        )
+        val second = engine.predict(
+            samples = listOf(
+                TrainingTelemetrySample(elapsedSeconds = 5, heartRateBpm = 121, cadenceSpm = 161),
+                TrainingTelemetrySample(elapsedSeconds = 20, heartRateBpm = 122, cadenceSpm = 162),
+                TrainingTelemetrySample(elapsedSeconds = 35, heartRateBpm = 122, cadenceSpm = 163),
+                TrainingTelemetrySample(elapsedSeconds = 50, heartRateBpm = 123, cadenceSpm = 163)
+            ),
+            targetMinBpm = 110,
+            targetMaxBpm = 128
+        )
+
+        assertEquals(PacingDecision.SlowDownSoon, first.decision)
+        assertEquals(PacingDecision.SlowDownSoon, second.decision)
     }
 }

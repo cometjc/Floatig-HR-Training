@@ -21,17 +21,6 @@ Planning notes:
 
 ---
 
-plan-005-complete-training-editor:
-	Make segment add/edit/delete persistent. Implement repeat-block editing and
-	segment selection modal. Add validation: at least one segment, repeat selection
-	minimums, duration > 0.
-
-plan-006-improve-prediction:
-	Store per-user/per-zone lag from completed workouts. Weight recent samples more
-	strongly. Detect cadence changes that haven't yet produced a HR response. Add
-	cooldown and hysteresis to prevent alert spam. Add confidence score to UI and
-	overlay. Add tests for overshoot prevention cases.
-
 plan-007-overlay-settings:
 	Add explicit floating mode toggle in settings. Add size modes (compact /
 	standard / large). Add transparency control. Add default-location reset. Add

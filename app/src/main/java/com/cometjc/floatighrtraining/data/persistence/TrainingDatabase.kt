@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         TrainingPlanEntity::class,
         TrainingPlanSegmentEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class TrainingDatabase : RoomDatabase() {

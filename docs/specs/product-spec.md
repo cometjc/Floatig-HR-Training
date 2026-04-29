@@ -36,7 +36,6 @@ Implemented today:
 
 Not implemented yet:
 
-- Fully editable and persistent training editor
 - Release distribution beyond CI debug artifact
 
 Implemented in `plan-010-github-actions-ci`:
@@ -64,6 +63,19 @@ Implemented in `plan-004-persist-data`:
 - Room database for workouts, workout samples, training plans, and plan segments
 - Room table for learned heart-rate delay estimates used by pacing prediction
 - DataStore-backed user preferences for max HR, zone ranges, alert toggles, and overlay settings
+
+Implemented in `plan-005-complete-training-editor`:
+
+- Training editor supports persistent segment add/edit/delete
+- Repeat count editing with minimum value validation (`repeats >= 1`)
+- Save validation enforces at least one segment and `durationSeconds > 0`
+
+Implemented in `plan-006-improve-prediction`:
+
+- Prediction slope uses recency-weighted regression to react faster to latest trend
+- Added cadence lead-signal detection, cooldown, and hysteresis to reduce alert spam
+- Added prediction confidence score for workout/overlay display
+- Added Room persistence model for per-user/per-zone delay estimates
 
 ## Product requirements
 

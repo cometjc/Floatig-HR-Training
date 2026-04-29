@@ -69,6 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,15 +90,21 @@ import androidx.compose.ui.unit.sp
 import com.cometjc.floatighrtraining.ble.HeartRateBleController
 import com.cometjc.floatighrtraining.ble.HeartRateBleUiState
 import com.cometjc.floatighrtraining.data.SampleRepository
+import com.cometjc.floatighrtraining.data.persistence.PersistedTrainingPlan
+import com.cometjc.floatighrtraining.data.persistence.TrainingDatabaseProvider
+import com.cometjc.floatighrtraining.data.persistence.TrainingPlanRepository
 import com.cometjc.floatighrtraining.model.AlertState
 import com.cometjc.floatighrtraining.model.HeartRateZone
 import com.cometjc.floatighrtraining.model.TrainingPlan
+import com.cometjc.floatighrtraining.model.TrainingSegment
 import com.cometjc.floatighrtraining.model.defaultZones
+import com.cometjc.floatighrtraining.model.sampleTrainingPlan
 import com.cometjc.floatighrtraining.prediction.PacingDecision
 import com.cometjc.floatighrtraining.service.FloatingHeartRateService
 import com.cometjc.floatighrtraining.service.HeartRateForegroundService
 import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val DarkBackground = Color(0xFF050607)
 private val CardBackground = Color(0xFF1D1D1F)
@@ -110,12 +117,23 @@ private val Danger = Color(0xFFFF453A)
 fun FloatingHrApp() {
     var navigationState by remember { mutableStateOf(AppNavigationState()) }
     var running by remember { mutableStateOf(false) }
-    val training = remember { SampleRepository.trainingPlans.first() }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val bleController = remember(context.applicationContext) {
         HeartRateBleController.getInstance(context.applicationContext)
     }
+    val trainingPlanRepository = remember(context.applicationContext) {
+        val database = TrainingDatabaseProvider.get(context.applicationContext)
+        TrainingPlanRepository(database.trainingPlanDao())
+    }
+    val persistedPlans by trainingPlanRepository.plans.collectAsState(initial = emptyList())
+    var selectedPlanId by remember { mutableStateOf<Long?>(null) }
     val bleState by bleController.uiState.collectAsState()
+    val selectedTraining = remember(persistedPlans, selectedPlanId) {
+        persistedPlans.firstOrNull { it.id == selectedPlanId }?.plan
+            ?: persistedPlans.firstOrNull()?.plan
+            ?: sampleTrainingPlan()
+    }
 
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
@@ -129,7 +147,7 @@ fun FloatingHrApp() {
     ) {
         Surface(color = DarkBackground, modifier = Modifier.fillMaxSize()) {
             if (running) {
-                WorkoutScreen(training = training, bleController = bleController, onStop = {
+                WorkoutScreen(training = selectedTraining, bleController = bleController, onStop = {
                     running = false
                     bleController.stopWorkout()
                     context.stopService(Intent(context, FloatingHeartRateService::class.java))
@@ -160,9 +178,20 @@ fun FloatingHrApp() {
                     ) {
                         when (navigationState.topLevelDestination) {
                             AppTopLevelDestination.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
-                                startMonitoringServices(context, training, bleController)
+                                startMonitoringServices(context, selectedTraining, bleController)
                                 running = true
-                            }, trainingDestination = navigationState.trainingDestination, bleState = bleState, onScanToggle = {
+                            },
+                                trainingDestination = navigationState.trainingDestination,
+                                bleState = bleState,
+                                plans = persistedPlans,
+                                selectedPlanId = selectedPlanId,
+                                onPlanSelected = { selectedPlanId = it },
+                                onSavePlan = { id, plan ->
+                                    savePlan(coroutineScope, trainingPlanRepository, id, plan) { newId ->
+                                        selectedPlanId = newId
+                                    }
+                                },
+                                onScanToggle = {
                                 if (bleState.isScanning) bleController.stopScan() else bleController.startScan()
                             }, onDeviceSelected = { address ->
                                 bleController.selectDevice(address)
@@ -216,11 +245,28 @@ private fun startMonitoringServices(
     }
 }
 
+private fun savePlan(
+    scope: kotlinx.coroutines.CoroutineScope,
+    repository: TrainingPlanRepository,
+    id: Long?,
+    plan: TrainingPlan,
+    onSaved: (Long) -> Unit
+) {
+    scope.launch {
+        val savedId = repository.upsert(id, plan)
+        onSaved(savedId)
+    }
+}
+
 @Composable
 private fun TrainingHome(
     scaffoldPadding: PaddingValues,
     trainingDestination: TrainingDestination?,
     bleState: HeartRateBleUiState,
+    plans: List<PersistedTrainingPlan>,
+    selectedPlanId: Long?,
+    onPlanSelected: (Long) -> Unit,
+    onSavePlan: (Long?, TrainingPlan) -> Unit,
     onStart: () -> Unit,
     onScanToggle: () -> Unit,
     onDeviceSelected: (String) -> Unit,
@@ -229,7 +275,8 @@ private fun TrainingHome(
     onEditPlan: () -> Unit,
     onDismissTrainingDestination: () -> Unit
 ) {
-    val training = remember { SampleRepository.trainingPlans.first() }
+    val selectedPlan = plans.firstOrNull { it.id == selectedPlanId } ?: plans.firstOrNull()
+    val training = selectedPlan?.plan ?: sampleTrainingPlan()
     val layoutDirection = LocalLayoutDirection.current
     val listPadding = combinedPadding(
         base = scaffoldPadding,
@@ -368,13 +415,22 @@ private fun TrainingHome(
     when (trainingDestination) {
         TrainingDestination.PlanList -> {
             TrainingListDialog(
-                training,
+                plans = plans,
+                selectedPlanId = selectedPlan?.id,
                 onDismiss = onDismissTrainingDestination,
-                onEdit = onEditPlan
+                onEdit = onEditPlan,
+                onSelect = onPlanSelected
             )
         }
         TrainingDestination.PlanEditor -> {
-            TrainingEditorDialog(training, onDismiss = onDismissTrainingDestination)
+            TrainingEditorDialog(
+                initialPlan = training,
+                onDismiss = onDismissTrainingDestination,
+                onSave = { updatedPlan ->
+                    onSavePlan(selectedPlan?.id, updatedPlan)
+                    onDismissTrainingDestination()
+                }
+            )
         }
         null -> Unit
     }
@@ -422,14 +478,29 @@ private fun DeviceCard(
 }
 
 @Composable
-private fun TrainingListDialog(training: TrainingPlan, onDismiss: () -> Unit, onEdit: () -> Unit) {
+private fun TrainingListDialog(
+    plans: List<PersistedTrainingPlan>,
+    selectedPlanId: Long?,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onSelect: (Long) -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
         title = { Text("Trainings", fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                TrainingPlanCard(training, onEdit)
+                if (plans.isEmpty()) {
+                    Text("尚未建立訓練，請先新增一個段落。", color = MutedText)
+                }
+                plans.forEach { item ->
+                    TrainingPlanCard(
+                        training = item.plan,
+                        isSelected = item.id == selectedPlanId,
+                        onClick = { onSelect(item.id) }
+                    )
+                }
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = onEdit,
@@ -445,8 +516,16 @@ private fun TrainingListDialog(training: TrainingPlan, onDismiss: () -> Unit, on
 }
 
 @Composable
-private fun TrainingPlanCard(training: TrainingPlan, onEdit: () -> Unit) {
-    AppCard(modifier = Modifier.clickable(onClick = onEdit)) {
+private fun TrainingPlanCard(training: TrainingPlan, isSelected: Boolean, onClick: () -> Unit) {
+    AppCard(
+        modifier = Modifier
+            .border(
+                width = if (isSelected) 1.dp else 0.dp,
+                color = Cyan.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(training.name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -464,75 +543,164 @@ private fun TrainingPlanCard(training: TrainingPlan, onEdit: () -> Unit) {
 }
 
 @Composable
-private fun TrainingEditorDialog(training: TrainingPlan, onDismiss: () -> Unit) {
-    var segmentDialog by remember { mutableStateOf(false) }
+private fun TrainingEditorDialog(
+    initialPlan: TrainingPlan,
+    onDismiss: () -> Unit,
+    onSave: (TrainingPlan) -> Unit
+) {
+    var name by remember { mutableStateOf(initialPlan.name) }
+    var repeats by remember { mutableIntStateOf(initialPlan.repeats.coerceAtLeast(1)) }
+    var freeTraining by remember { mutableStateOf(initialPlan.freeTraining) }
+    var segments by remember { mutableStateOf(initialPlan.segments) }
+    var editingSegmentIndex by remember { mutableStateOf<Int?>(null) }
+    var showSegmentDialog by remember { mutableStateOf(false) }
+
+    val hasInvalidDuration = segments.any { it.durationSeconds <= 0 }
+    val canSave = name.isNotBlank() && repeats >= 1 && segments.isNotEmpty() && !hasInvalidDuration
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
         title = { Text("Training bearbeiten", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                OutlinedTextField(value = training.name, onValueChange = {}, label = { Text("Name") })
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") })
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = false, onCheckedChange = {})
+                    Checkbox(checked = freeTraining, onCheckedChange = { freeTraining = it })
                     Text("Als freies Training nach Segmentende fortsetzen", color = MutedText)
                 }
-                Text("Gesamt: 1h 0m • 12 Segmente", color = MutedText, textAlign = TextAlign.Center)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Wiederholungen", color = MutedText, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { if (repeats > 1) repeats-- }) { Text("−", fontSize = 24.sp) }
+                    Text("$repeats", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    IconButton(onClick = { repeats++ }) { Text("+", fontSize = 24.sp) }
+                }
+                val totalMinutes = (segments.sumOf { it.durationSeconds } * repeats) / 60
+                Text("Gesamt: ${totalMinutes}m • ${segments.size * repeats} Segmente", color = MutedText, textAlign = TextAlign.Center)
                 AppCard(
                     modifier = Modifier.border(1.dp, Cyan.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
                 ) {
-                    Text("↔  3x wiederholen", color = Cyan, fontWeight = FontWeight.Bold)
+                    Text("↔  ${repeats}x wiederholen", color = Cyan, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    training.segments.forEach { segment ->
+                    segments.forEachIndexed { index, segment ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 9.dp)) {
                             Box(Modifier.width(4.dp).height(32.dp).background(segment.zone.color, RoundedCornerShape(2.dp)))
                             Spacer(Modifier.width(22.dp))
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(segment.zone.label, color = segment.zone.color, fontWeight = FontWeight.Bold)
                                 Text("${segment.minutes}m", color = MutedText)
                             }
+                            Text(
+                                "編輯",
+                                color = Cyan,
+                                modifier = Modifier.clickable {
+                                    editingSegmentIndex = index
+                                    showSegmentDialog = true
+                                }
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "刪除",
+                                color = Danger,
+                                modifier = Modifier.clickable {
+                                    segments = segments.filterIndexed { i, _ -> i != index }
+                                }
+                            )
                         }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { segmentDialog = true }, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = {
+                            editingSegmentIndex = null
+                            showSegmentDialog = true
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("+ Segment")
                     }
-                    OutlinedButton(onClick = {}, modifier = Modifier.weight(1f), enabled = false) {
+                    OutlinedButton(onClick = { repeats++ }, modifier = Modifier.weight(1f)) {
                         Text("↵ Wiederholen")
                     }
                 }
+                if (!canSave) {
+                    Text("至少要有 1 個 segment，duration > 0，且 repeats >= 1。", color = Danger)
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Speichern", color = Cyan) } },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(
+                        TrainingPlan(
+                            name = name.trim(),
+                            repeats = repeats,
+                            freeTraining = freeTraining,
+                            segments = segments
+                        )
+                    )
+                },
+                enabled = canSave
+            ) { Text("Speichern", color = Cyan) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen", color = Cyan) } }
     )
-    if (segmentDialog) {
-        SegmentDialog(onDismiss = { segmentDialog = false })
+    if (showSegmentDialog) {
+        SegmentDialog(
+            initial = editingSegmentIndex?.let { segments[it] },
+            onDismiss = { showSegmentDialog = false },
+            onConfirm = { newSegment ->
+                segments = if (editingSegmentIndex == null) {
+                    segments + newSegment
+                } else {
+                    segments.toMutableList().also { it[editingSegmentIndex!!] = newSegment }
+                }
+                showSegmentDialog = false
+            }
+        )
     }
 }
 
 @Composable
-private fun SegmentDialog(onDismiss: () -> Unit) {
+private fun SegmentDialog(
+    initial: TrainingSegment?,
+    onDismiss: () -> Unit,
+    onConfirm: (TrainingSegment) -> Unit
+) {
     val zones = remember { defaultZones() }
-    var selected by remember { mutableStateOf(zones[1]) }
+    var selected by remember { mutableStateOf(initial?.zone ?: zones[1]) }
+    var minutes by remember { mutableIntStateOf((initial?.durationSeconds ?: 300) / 60) }
+    var note by remember { mutableStateOf(initial?.note.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardBackground,
-        title = { Text("Segment hinzufügen") },
+        title = { Text(if (initial == null) "Segment hinzufügen" else "Segment編輯") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Zielzone", color = MutedText)
                 ZoneSelector(zones = zones, selected = selected, onSelect = { selected = it })
                 Text("Dauer", color = MutedText)
-                Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
-                    Stepper("Min", 5)
-                    Stepper("Sek", 0)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { if (minutes > 1) minutes-- }) { Text("−", fontSize = 24.sp) }
+                    Text("${minutes}m", fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    IconButton(onClick = { minutes++ }) { Text("+", fontSize = 24.sp) }
                 }
-                OutlinedTextField(value = "", onValueChange = {}, placeholder = { Text("Bezeichnung (optional)") })
+                OutlinedTextField(value = note, onValueChange = { note = it }, placeholder = { Text("Bezeichnung (optional)") })
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK", color = Cyan) } },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        TrainingSegment(
+                            zone = selected,
+                            durationSeconds = minutes * 60,
+                            note = note
+                        )
+                    )
+                }
+            ) { Text("OK", color = Cyan) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen", color = Cyan) } }
     )
 }
@@ -564,18 +732,6 @@ private fun ZoneSelector(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun Stepper(label: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = MutedText)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("⊖", color = MutedText, fontSize = 24.sp)
-            Text("$value", fontSize = 30.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 20.dp))
-            Text("⊕", color = Color.White, fontSize = 24.sp)
         }
     }
 }
@@ -660,6 +816,7 @@ private fun WorkoutScreen(
                 "步頻 ${sessionState.cadence} spm · 上升 ${"%.1f".format(prediction.heartRateSlopeBpmPerMinute)} bpm/min",
                 color = MutedText
             )
+            Text("信心 ${ (prediction.confidenceScore * 100).toInt() }%", color = MutedText)
             Text("Nächstes: 1m Z3 Tempo", color = MutedText)
             Spacer(Modifier.weight(1f))
             Text(

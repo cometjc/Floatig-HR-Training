@@ -23,10 +23,11 @@ class HeartRateDelayEstimateDaoTest {
     }
 
     @Test
-    fun latestEstimateForZoneWins() = runTest {
+    fun latestEstimateForUserAndZoneWins() = runTest {
         val dao = database.heartRateDelayEstimateDao()
         dao.insert(
             HeartRateDelayEstimateEntity(
+                userId = "user-a",
                 zoneId = "Z3",
                 delaySeconds = 30,
                 confidence = 0.42f,
@@ -36,6 +37,7 @@ class HeartRateDelayEstimateDaoTest {
         )
         dao.insert(
             HeartRateDelayEstimateEntity(
+                userId = "user-a",
                 zoneId = "Z3",
                 delaySeconds = 24,
                 confidence = 0.71f,
@@ -43,8 +45,18 @@ class HeartRateDelayEstimateDaoTest {
                 recordedAtEpochMs = 200
             )
         )
+        dao.insert(
+            HeartRateDelayEstimateEntity(
+                userId = "user-b",
+                zoneId = "Z3",
+                delaySeconds = 18,
+                confidence = 0.91f,
+                sampleCount = 20,
+                recordedAtEpochMs = 300
+            )
+        )
 
-        val restored = dao.getLatestForZone("Z3")
+        val restored = dao.getLatestForUserZone(userId = "user-a", zoneId = "Z3")
 
         assertNotNull(restored)
         assertEquals(24, restored!!.delaySeconds)

@@ -11,8 +11,8 @@ interface HeartRateDelayEstimateDao {
     suspend fun insert(estimate: HeartRateDelayEstimateEntity): Long
 
     @Query(
-        "SELECT * FROM heart_rate_delay_estimate WHERE zoneId = :zoneId " +
+        "SELECT * FROM heart_rate_delay_estimate WHERE userId = :userId AND zoneId = :zoneId " +
             "ORDER BY recordedAtEpochMs DESC LIMIT 1"
     )
-    suspend fun getLatestForZone(zoneId: String): HeartRateDelayEstimateEntity?
+    suspend fun getLatestForUserZone(userId: String, zoneId: String): HeartRateDelayEstimateEntity?
 }

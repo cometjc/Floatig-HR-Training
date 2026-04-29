@@ -19,15 +19,6 @@ private const val MAX_SAMPLE_HISTORY = 24
 
 private val DEFAULT_ZONE: HeartRateZone = defaultZones().first { it.id == "Z2" }
 private val DEFAULT_SEGMENT = TrainingSegment(zone = DEFAULT_ZONE, durationSeconds = 60)
-private val DEFAULT_SAMPLES = listOf(
-    TrainingTelemetrySample(0, 113, 156),
-    TrainingTelemetrySample(15, 116, 160),
-    TrainingTelemetrySample(30, 119, 164),
-    TrainingTelemetrySample(45, 122, 168),
-    TrainingTelemetrySample(60, 125, 170),
-    TrainingTelemetrySample(75, 127, 170)
-)
-
 private fun defaultPrediction(bpm: Int): PacingPrediction {
     return PacingPrediction(
         decision = PacingDecision.Maintain,
@@ -35,7 +26,8 @@ private fun defaultPrediction(bpm: Int): PacingPrediction {
         projectedBpm = bpm.toDouble(),
         secondsToUpperBound = null,
         heartRateSlopeBpmPerMinute = 0.0,
-        delayEstimate = HeartRateDelayEstimate(seconds = 30, confidence = 0f)
+        delayEstimate = HeartRateDelayEstimate(seconds = 30, confidence = 0f),
+        confidenceScore = 0f
     )
 }
 
@@ -52,7 +44,7 @@ data class WorkoutSessionState(
     val remainingSeconds: Int = 0,
     val alertState: AlertState = AlertState.fromBpm(DEFAULT_BPM, DEFAULT_SEGMENT.zone),
     val prediction: PacingPrediction = defaultPrediction(DEFAULT_BPM),
-    val samples: List<TrainingTelemetrySample> = DEFAULT_SAMPLES
+    val samples: List<TrainingTelemetrySample> = emptyList()
 )
 
 class WorkoutSessionStore(
@@ -62,10 +54,12 @@ class WorkoutSessionStore(
     val state: StateFlow<WorkoutSessionState> = _state
 
     fun start(training: TrainingPlan, connectedDeviceName: String? = null) {
+        predictionEngine.reset()
         val segments = expandedSegments(training)
         val currentSegment = segments.firstOrNull() ?: DEFAULT_SEGMENT
+        val seedSamples = listOf(TrainingTelemetrySample(0, DEFAULT_BPM, DEFAULT_CADENCE))
         val prediction = predictionEngine.predict(
-            samples = DEFAULT_SAMPLES,
+            samples = seedSamples,
             targetMinBpm = currentSegment.zone.minBpm,
             targetMaxBpm = currentSegment.zone.maxBpm
         )
@@ -80,7 +74,7 @@ class WorkoutSessionStore(
             remainingSeconds = training.totalSeconds,
             alertState = AlertState.fromBpm(DEFAULT_BPM, currentSegment.zone),
             prediction = prediction,
-            samples = DEFAULT_SAMPLES
+            samples = seedSamples
         )
     }
 
@@ -113,6 +107,7 @@ class WorkoutSessionStore(
     }
 
     fun stop() {
+        predictionEngine.reset()
         _state.value = WorkoutSessionState()
     }
 

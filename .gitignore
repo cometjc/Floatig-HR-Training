@@ -7,4 +7,3 @@ local.properties
 sentry.properties
 sentry-wizard
 .worktrees/
-/.cursor/index.mdc
