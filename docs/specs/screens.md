@@ -13,7 +13,10 @@ Elements:
 - Primary bottom action: `Training starten`
 
 Status: implemented with sample Polar H10 device. BLE client scaffolded;
-scan/connect not yet wired to UI state.
+`plan-002-wire-ble-hr-data` wires Polar BLE scan/connect state into the UI via
+an app-level `HeartRateBleController`. The scan button now starts/stops
+discovery, detected device rows show RSSI, selecting a row requests a
+connection, and the connection card reflects the currently connected Polar H10.
 
 ## Training list
 
@@ -58,8 +61,10 @@ Elements:
 Status: implemented with `centralize-workout-state` via a shared workout
 `StateFlow` owned by `HeartRateForegroundService`. The workout screen,
 foreground notification, and floating overlay now read the same current BPM,
-cadence, current segment, prediction, and elapsed/remaining time. Live BLE
-input is still pending; simulated telemetry currently feeds the shared state.
+cadence, current segment, prediction, and elapsed/remaining time.
+`plan-002-wire-ble-hr-data` replaces simulated BPM updates with live Polar H10
+heart-rate notifications while cadence remains the placeholder source until
+`plan-003-add-cadence-data`.
 
 ## History
 

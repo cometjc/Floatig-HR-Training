@@ -42,7 +42,9 @@ the app projects near-future BPM and warns early when needed.
 
 Current state:
 
-- Active workout uses simulated telemetry rather than live BLE/cadence feeds.
+- `plan-002-wire-ble-hr-data` now feeds live Polar H10 BPM into the active
+  workout, foreground notification, and floating overlay.
+- Cadence is still placeholder telemetry until `plan-003-add-cadence-data`.
 - The model is intentionally simple and explainable.
 - Alert cooldown/throttling exists in the overlay service, not yet as a richer
   prediction-policy layer.

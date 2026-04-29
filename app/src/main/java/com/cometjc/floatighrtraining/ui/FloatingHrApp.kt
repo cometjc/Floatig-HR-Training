@@ -86,6 +86,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cometjc.floatighrtraining.ble.HeartRateBleController
+import com.cometjc.floatighrtraining.ble.HeartRateBleUiState
 import com.cometjc.floatighrtraining.data.SampleRepository
 import com.cometjc.floatighrtraining.model.AlertState
 import com.cometjc.floatighrtraining.model.HeartRateZone
@@ -110,6 +112,10 @@ fun FloatingHrApp() {
     var running by remember { mutableStateOf(false) }
     val training = remember { SampleRepository.trainingPlans.first() }
     val context = LocalContext.current
+    val bleController = remember(context.applicationContext) {
+        HeartRateBleController.getInstance(context.applicationContext)
+    }
+    val bleState by bleController.uiState.collectAsState()
 
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
@@ -123,9 +129,9 @@ fun FloatingHrApp() {
     ) {
         Surface(color = DarkBackground, modifier = Modifier.fillMaxSize()) {
             if (running) {
-                WorkoutScreen(training = training, onStop = {
+                WorkoutScreen(training = training, bleController = bleController, onStop = {
                     running = false
-                    HeartRateForegroundService.stopSession()
+                    bleController.stopWorkout()
                     context.stopService(Intent(context, FloatingHeartRateService::class.java))
                     context.stopService(Intent(context, HeartRateForegroundService::class.java))
                     SentryTelemetry.instance.monitoringServicesStopped()
@@ -154,9 +160,16 @@ fun FloatingHrApp() {
                     ) {
                         when (navigationState.topLevelDestination) {
                             AppTopLevelDestination.Training -> TrainingHome(scaffoldPadding = innerPadding, onStart = {
-                                startMonitoringServices(context, training)
+                                startMonitoringServices(context, training, bleController)
                                 running = true
-                            }, trainingDestination = navigationState.trainingDestination, onShowPlans = {
+                            }, trainingDestination = navigationState.trainingDestination, bleState = bleState, onScanToggle = {
+                                if (bleState.isScanning) bleController.stopScan() else bleController.startScan()
+                            }, onDeviceSelected = { address ->
+                                bleController.selectDevice(address)
+                                bleController.connectSelectedDevice()
+                            }, onDisconnect = {
+                                bleController.disconnect()
+                            }, onShowPlans = {
                                 navigationState = navigationState.showTrainingPlans()
                             }, onEditPlan = {
                                 navigationState = navigationState.editTrainingPlan()
@@ -173,10 +186,14 @@ fun FloatingHrApp() {
     }
 }
 
-private fun startMonitoringServices(context: Context, training: TrainingPlan) {
+private fun startMonitoringServices(
+    context: Context,
+    training: TrainingPlan,
+    bleController: HeartRateBleController
+) {
     val overlayPermissionGranted = Settings.canDrawOverlays(context)
     SentryTelemetry.instance.monitoringServicesStarting(overlayPermissionGranted)
-    HeartRateForegroundService.startSession(training = training)
+    bleController.startWorkout(training)
 
     val foregroundIntent = Intent(context, HeartRateForegroundService::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -203,12 +220,15 @@ private fun startMonitoringServices(context: Context, training: TrainingPlan) {
 private fun TrainingHome(
     scaffoldPadding: PaddingValues,
     trainingDestination: TrainingDestination?,
+    bleState: HeartRateBleUiState,
     onStart: () -> Unit,
+    onScanToggle: () -> Unit,
+    onDeviceSelected: (String) -> Unit,
+    onDisconnect: () -> Unit,
     onShowPlans: () -> Unit,
     onEditPlan: () -> Unit,
     onDismissTrainingDestination: () -> Unit
 ) {
-    val devices = remember { SampleRepository.devices }
     val training = remember { SampleRepository.trainingPlans.first() }
     val layoutDirection = LocalLayoutDirection.current
     val listPadding = combinedPadding(
@@ -269,27 +289,53 @@ private fun TrainingHome(
                     }
                     Spacer(Modifier.height(14.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Bluetooth, contentDescription = null, tint = Success)
+                        Icon(
+                            Icons.Default.Bluetooth,
+                            contentDescription = null,
+                            tint = if (bleState.connectedDeviceName != null) Success else MutedText
+                        )
                         Spacer(Modifier.width(14.dp))
-                        Text("Verbunden mit Polar H10 0FC4C438", color = Success, modifier = Modifier.weight(1f))
-                        Text("✓", color = Success, fontWeight = FontWeight.Bold)
+                        Text(
+                            bleState.connectedDeviceName?.let { "Verbunden mit $it" } ?: "Noch kein Sensor verbunden",
+                            color = if (bleState.connectedDeviceName != null) Success else MutedText,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            if (bleState.connectedDeviceName != null) "Trennen" else "Suche",
+                            color = if (bleState.connectedDeviceName != null) Success else Cyan,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                if (bleState.connectedDeviceName != null) onDisconnect() else onScanToggle()
+                            }
+                        )
                     }
                 }
             }
             item {
                 Button(
-                    onClick = {},
+                    onClick = onScanToggle,
                     modifier = Modifier.fillMaxWidth().height(62.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Color.Black)
                 ) {
                     Icon(Icons.Default.Bluetooth, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Nach Geräten suchen", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(
+                        if (bleState.isScanning) "Suche stoppen" else "Nach Geräten suchen",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
                 }
             }
-            items(devices) { device ->
-                DeviceCard(device.name, device.rssi)
+            items(bleState.devices) { device ->
+                DeviceCard(
+                    name = device.name,
+                    rssi = device.rssi,
+                    isSelected = device.address == bleState.selectedDeviceAddress,
+                    isConnected = device.name == bleState.connectedDeviceName,
+                    isConnecting = bleState.isConnecting && device.address == bleState.selectedDeviceAddress,
+                    onClick = { onDeviceSelected(device.address) }
+                )
             }
             item {
                 Text(
@@ -335,8 +381,21 @@ private fun TrainingHome(
 }
 
 @Composable
-private fun DeviceCard(name: String, rssi: Int) {
-    AppCard {
+private fun DeviceCard(
+    name: String,
+    rssi: Int,
+    isSelected: Boolean,
+    isConnected: Boolean,
+    isConnecting: Boolean,
+    onClick: () -> Unit
+) {
+    AppCard(
+        modifier = Modifier.border(
+            width = if (isSelected || isConnected) 1.dp else 0.dp,
+            color = if (isConnected) Success else Cyan.copy(alpha = 0.45f),
+            shape = RoundedCornerShape(18.dp)
+        ).clickable(onClick = onClick)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier.size(54.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF17303C)),
@@ -349,7 +408,15 @@ private fun DeviceCard(name: String, rssi: Int) {
                 Text(name, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("▮▮▯  $rssi dBm", color = MutedText)
             }
-            Text("›", color = MutedText, fontSize = 34.sp)
+            Text(
+                when {
+                    isConnected -> "✓"
+                    isConnecting -> "…"
+                    else -> "›"
+                },
+                color = if (isConnected) Success else MutedText,
+                fontSize = 34.sp
+            )
         }
     }
 }
@@ -530,24 +597,18 @@ private fun combinedPadding(
 }
 
 @Composable
-private fun WorkoutScreen(training: TrainingPlan, onStop: () -> Unit) {
+private fun WorkoutScreen(
+    training: TrainingPlan,
+    bleController: HeartRateBleController,
+    onStop: () -> Unit
+) {
     var paused by remember { mutableStateOf(false) }
     val sessionState by HeartRateForegroundService.workoutSessionState.collectAsState()
     val zone = sessionState.currentSegment.zone
     val prediction = sessionState.prediction
 
     LaunchedEffect(paused) {
-        while (!paused) {
-            delay(1800)
-            val current = HeartRateForegroundService.workoutSessionState.value
-            if (!current.isRunning) break
-
-            HeartRateForegroundService.recordTelemetry(
-                bpm = (current.bpm + listOf(0, 1, 1, 2, -1).random()).coerceIn(110, 134),
-                cadence = (current.cadence + listOf(-1, 0, 1, 2).random()).coerceIn(150, 184),
-                elapsedSeconds = current.elapsedSeconds + 2
-            )
-        }
+        if (paused) bleController.pauseWorkout() else bleController.resumeWorkout()
     }
 
     Box(
