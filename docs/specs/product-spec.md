@@ -38,7 +38,14 @@ Not implemented yet:
 
 - Persistence for settings, plans, or workout history
 - Fully editable and persistent training editor
-- CI distribution / release workflow
+- Release distribution beyond CI debug artifact
+
+Implemented in `plan-010-github-actions-ci`:
+
+- GitHub Actions workflow on every push and pull request
+- Runs `:app:testDebugUnitTest` and `:app:assembleDebug`
+- Uploads `app-debug.apk` as the `app-debug-apk` build artifact
+- Pulls the private Polar BLE SDK submodule via repository SSH secret
 
 Implemented in `plan-002-wire-ble-hr-data`:
 

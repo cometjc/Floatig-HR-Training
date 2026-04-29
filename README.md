@@ -15,6 +15,19 @@ If a fresh machine lacks the SDK, install `platform-tools`, `platforms;android-3
 and `build-tools;35.0.0` first. The committed `gradlew` downloads Gradle
 automatically; no Gradle installation is needed.
 
+## CI
+
+GitHub Actions workflow: `.github/workflows/android-ci.yml`
+
+- Triggers on every `push` and `pull_request`
+- Runs `./gradlew :app:testDebugUnitTest`
+- Runs `./gradlew :app:assembleDebug`
+- Uploads `app/build/outputs/apk/debug/app-debug.apk` as artifact `app-debug-apk`
+
+Current prerequisite: the build depends on private submodule `ble-provider/polar-ble-sdk`.
+Set repository secret `POLAR_BLE_SDK_SSH_KEY` so `actions/checkout` can fetch the
+SSH-based submodule before Gradle starts.
+
 ## Architecture
 
 ### Entry and UI
