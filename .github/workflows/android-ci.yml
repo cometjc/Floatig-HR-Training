@@ -1,0 +1,52 @@
+name: Android CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  app-debug:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ssh-key: ${{ secrets.POLAR_BLE_SDK_SSH_KEY }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Verify Polar BLE SDK checkout
+        run: |
+          if ! compgen -G "ble-provider/polar-ble-sdk/sources/Android/android-communications/library/build.gradle*" > /dev/null; then
+            echo "Missing ble-provider/polar-ble-sdk sources. Configure POLAR_BLE_SDK_SSH_KEY so actions/checkout can fetch the private submodule."
+            exit 1
+          fi
+
+      - name: Run debug unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

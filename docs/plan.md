@@ -49,11 +49,7 @@ plan-009-navigation-structure: plan-008-edge-to-edge
 	introduce typed screen state, preserve tab state, and make dialogs/editors
 	explicit destinations before considering a full navigation library migration.
 
-plan-010-github-actions-ci:
-	On every push and pull request: run testDebugUnitTest, build assembleDebug,
-	upload app/build/outputs/apk/debug/app-debug.apk as a GitHub Actions artifact.
-
-plan-011-sentry-releases: plan-010-github-actions-ci
+plan-011-sentry-releases:
 	Derive release as com.cometjc.floatighrtraining@<versionName>+<versionCode>-<shortSha>.
 	After successful CI build: sentry release create, set-commits --local (switch
 	to --auto once GitHub is connected in Sentry), finalize, record deploy
