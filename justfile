@@ -12,3 +12,12 @@ plan-done target:
 
 plan-complete target:
     @just plan-done {{target}}
+
+pld-preflight:
+    ./scripts/pld_preflight.sh
+
+pld-bootstrap execution:
+    python3 scripts/pld_bootstrap.py --execution {{execution}}
+
+pld-integrate execution:
+    ./scripts/pld_integrate.sh {{execution}}

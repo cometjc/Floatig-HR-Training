@@ -8,15 +8,10 @@
 
 - `docs/plan.md` 是唯一的未完成計畫來源。
 - `docs/specs/` 是唯一的 spec 來源；不要再把 spec 留在 `docs/` 根目錄。
-- 所有規劃與 plan 執行必須走 `/do` skill 路由，不可繞過 `/do` 直接進行自訂流程。
-- 在規劃階段，若流程使用 `$do` / `$pld`，必須把所有目前沒有被依賴阻塞的候選 plans 一次送進同一輪規劃與執行批次，不可只挑眼前的一個 plan 單獨往下做。
-- 規劃時要盡可能一路推進到各個決策點，提前整理中途可能需要使用者決斷的問題，避免執行到一半才回頭補問。
-- 同一輪送進 `$do` / `$pld` 的未阻塞 candidates，預設一路執行到完成並合併回主線後，再開始下一輪規劃；除非途中出現新阻塞、需求變更，或使用者明確改道。
+- 所有規劃與 plan 執行必須走 `/do`；路由、AUQ、review continuity、完成條件以 `/do` skill 規則為準。
 - 開始做下一個 plan 前，先執行 `just plan-ready`（或相容別名 `just plan-next`），只從目前無相依 target 中挑選。
 - 完成某個 plan 後，必須先把對應行為更新到 `docs/specs/*.md`，並在至少一份 spec 中留下該 plan keyword。
-- spec 更新完成後，再執行 `just plan-done <target-or-keyword>`（或相容別名 `just plan-complete <target-or-keyword>`）。
-- `just plan-done` 會先檢查 plan keyword 是否已出現在 `docs/specs/`，且命中的 spec 目前必須有 staged 或 unstaged 變更；未達條件時不得移除該 plan。
-- `just plan-done` 會同時移除該 target，並清掉其他 target 對它的依賴標註。
+- 若使用 `/pld`，`plan-done` 由 coordinator 統一執行（lane 只處理實作 + spec）。
 
 ## Spec 驗證流程
 
@@ -32,6 +27,8 @@
 - 預設使用 repo 內的 `.worktrees/` 作為隔離開發目錄。
 - `.worktrees/` 必須保持在 `.gitignore` 中；建立新的實作分支前先確認沒有被移除。
 - 任何會寫入檔案的實作工作開始前，必須先執行 `/using-git-worktrees` 以建立/確認隔離工作區。
+- lane/subagent git context 檢查統一使用：`$HOME/.agents/skills/pld/scripts/ensure_git_context.sh`。
+- `/pld` 執行細節（preflight、dispatch mode、驗證分級、整合策略）以 `/pld` skill 規則為準。
 
 ## 收尾整合流程
 
