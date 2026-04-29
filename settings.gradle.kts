@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "FloatingHrTraining"
 include(":app")
+include(":polarBleSdk")
+project(":polarBleSdk").projectDir = file("ble-provider/polar-ble-sdk/sources/Android/android-communications/library")

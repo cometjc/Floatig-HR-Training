@@ -1,0 +1,3 @@
+[submodule "ble-provider/polar-ble-sdk"]
+	path = ble-provider/polar-ble-sdk
+	url = https://github.com/polarofficial/polar-ble-sdk.git
