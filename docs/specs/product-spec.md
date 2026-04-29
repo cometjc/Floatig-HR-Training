@@ -36,7 +36,6 @@ Implemented today:
 
 Not implemented yet:
 
-- Real cadence source
 - Persistence for settings, plans, or workout history
 - Fully editable and persistent training editor
 - CI distribution / release workflow
@@ -47,6 +46,12 @@ Implemented in `plan-002-wire-ble-hr-data`:
 - End-to-end BLE scan/connect state in the UI
 - Live BPM flow from BLE into workout UI, foreground service, and overlay
 - Automatic reconnection through the Polar SDK
+
+Implemented in `plan-003-add-cadence-data`:
+
+- Phone step-counter cadence source with `ACTIVITY_RECOGNITION` permission
+- Cadence normalized into the shared workout telemetry timeline
+- Cadence samples flowing into the prediction engine history
 
 ## Product requirements
 

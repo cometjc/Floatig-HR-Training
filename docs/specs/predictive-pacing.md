@@ -44,7 +44,8 @@ Current state:
 
 - `plan-002-wire-ble-hr-data` now feeds live Polar H10 BPM into the active
   workout, foreground notification, and floating overlay.
-- Cadence is still placeholder telemetry until `plan-003-add-cadence-data`.
+- `plan-003-add-cadence-data` now feeds phone step-counter cadence into the
+  same workout sample timeline used by pacing prediction.
 - The model is intentionally simple and explainable.
 - Alert cooldown/throttling exists in the overlay service, not yet as a richer
   prediction-policy layer.
@@ -53,5 +54,4 @@ Current state:
 
 - No persistence of learned lag across workouts
 - No confidence score exposed to UI
-- No real cadence source yet
 - No overshoot-prevention tuning based on recorded workouts

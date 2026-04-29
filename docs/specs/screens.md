@@ -63,8 +63,9 @@ Status: implemented with `centralize-workout-state` via a shared workout
 foreground notification, and floating overlay now read the same current BPM,
 cadence, current segment, prediction, and elapsed/remaining time.
 `plan-002-wire-ble-hr-data` replaces simulated BPM updates with live Polar H10
-heart-rate notifications while cadence remains the placeholder source until
-`plan-003-add-cadence-data`.
+heart-rate notifications. `plan-003-add-cadence-data` adds phone step-counter
+cadence so workout telemetry now carries both live BPM and live cadence through
+the same normalized session timeline.
 
 ## History
 

@@ -1,5 +1,6 @@
 package com.cometjc.floatighrtraining.ble
 
+import com.cometjc.floatighrtraining.cadence.CadenceMonitor
 import com.cometjc.floatighrtraining.model.DiscoveredHeartRateDevice
 import com.cometjc.floatighrtraining.model.TrainingPlan
 import com.cometjc.floatighrtraining.model.sampleTrainingPlan
@@ -19,9 +20,11 @@ class HeartRateBleControllerTest {
     @Test
     fun connectSelectedDevice_startsScanAndConnection() = runTest {
         val monitor = FakeHeartRateBleMonitor()
+        val cadenceMonitor = FakeCadenceMonitor()
         val coordinator = FakeWorkoutSessionCoordinator()
         val controller = HeartRateBleController(
             monitor = monitor,
+            cadenceMonitor = cadenceMonitor,
             workoutSessionCoordinator = coordinator,
             scope = backgroundScope,
             tickerDelayMillis = 50L
@@ -47,9 +50,11 @@ class HeartRateBleControllerTest {
     @Test
     fun startWorkout_recordsLiveHeartRateSamples() = runTest {
         val monitor = FakeHeartRateBleMonitor()
+        val cadenceMonitor = FakeCadenceMonitor()
         val coordinator = FakeWorkoutSessionCoordinator()
         val controller = HeartRateBleController(
             monitor = monitor,
+            cadenceMonitor = cadenceMonitor,
             workoutSessionCoordinator = coordinator,
             scope = backgroundScope,
             tickerDelayMillis = 50L
@@ -58,6 +63,7 @@ class HeartRateBleControllerTest {
 
         monitor.connectedDeviceNameFlow.value = "Polar H10 12345678"
         monitor.heartRateFlow.value = 148
+        cadenceMonitor.cadenceSpmFlow.value = 172
         advanceUntilIdle()
 
         controller.startWorkout(training)
@@ -66,6 +72,7 @@ class HeartRateBleControllerTest {
 
         assertEquals("Polar H10 12345678", coordinator.startedWithDeviceName)
         assertEquals(148, coordinator.state.value.bpm)
+        assertEquals(172, coordinator.state.value.cadence)
         assertEquals(1, coordinator.state.value.elapsedSeconds)
         assertEquals(1, coordinator.recordedTelemetry.size)
         controller.close()
@@ -123,4 +130,16 @@ private class FakeWorkoutSessionCoordinator : WorkoutSessionCoordinator {
     override fun stopSession() {
         stateFlow.value = WorkoutSessionState()
     }
+}
+
+private class FakeCadenceMonitor : CadenceMonitor {
+    val cadenceSpmFlow = MutableStateFlow<Int?>(null)
+
+    override val cadenceSpm: StateFlow<Int?> = cadenceSpmFlow
+
+    override fun startTracking() = Unit
+
+    override fun stopTracking() = Unit
+
+    override fun close() = Unit
 }

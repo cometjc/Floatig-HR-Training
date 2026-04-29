@@ -21,11 +21,6 @@ Planning notes:
 
 ---
 
-plan-003-add-cadence-data:
-	Integrate Android step counter or BLE foot pod as a cadence source. Normalize
-	cadence into timestamped TrainingTelemetrySample. Align HR and cadence sampling
-	clocks. Record cadence history for lag learning.
-
 plan-004-persist-data:
 	DataStore: max HR, custom zone ranges, alert preferences, overlay preferences.
 	Room: workout sessions, HR/cadence samples, learned lag estimates, training
@@ -36,7 +31,7 @@ plan-005-complete-training-editor: plan-004-persist-data
 	segment selection modal. Add validation: at least one segment, repeat selection
 	minimums, duration > 0.
 
-plan-006-improve-prediction: plan-003-add-cadence-data
+plan-006-improve-prediction:
 	Store per-user/per-zone lag from completed workouts. Weight recent samples more
 	strongly. Detect cadence changes that haven't yet produced a HR response. Add
 	cooldown and hysteresis to prevent alert spam. Add confidence score to UI and

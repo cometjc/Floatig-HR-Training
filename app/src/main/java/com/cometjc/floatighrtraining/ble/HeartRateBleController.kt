@@ -1,6 +1,9 @@
 package com.cometjc.floatighrtraining.ble
 
 import android.content.Context
+import com.cometjc.floatighrtraining.cadence.AndroidStepCadenceMonitor
+import com.cometjc.floatighrtraining.cadence.CadenceMonitor
+import com.cometjc.floatighrtraining.cadence.NoopCadenceMonitor
 import com.cometjc.floatighrtraining.model.DiscoveredHeartRateDevice
 import com.cometjc.floatighrtraining.model.TrainingPlan
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +28,7 @@ data class HeartRateBleUiState(
 
 class HeartRateBleController(
     private val monitor: HeartRateBleMonitor,
+    private val cadenceMonitor: CadenceMonitor = NoopCadenceMonitor,
     private val workoutSessionCoordinator: WorkoutSessionCoordinator = ForegroundWorkoutSessionCoordinator,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     private val tickerDelayMillis: Long = 1_000L
@@ -43,6 +47,9 @@ class HeartRateBleController(
         }
         scope.launch {
             monitor.heartRate.collect { publishUiState() }
+        }
+        scope.launch {
+            cadenceMonitor.cadenceSpm.collect { publishUiState() }
         }
         scope.launch {
             monitor.connectedDeviceName.collect { connectedDeviceName ->
@@ -89,6 +96,7 @@ class HeartRateBleController(
     }
 
     fun startWorkout(training: TrainingPlan) {
+        cadenceMonitor.startTracking()
         workoutSessionCoordinator.startSession(training, monitor.connectedDeviceName.value)
         resumeWorkout()
     }
@@ -108,9 +116,10 @@ class HeartRateBleController(
                 if (!current.isRunning) break
 
                 val bpm = uiState.value.heartRate.takeIf { it > 0 } ?: current.bpm
+                val cadence = cadenceMonitor.cadenceSpm.value ?: current.cadence
                 workoutSessionCoordinator.recordTelemetry(
                     bpm = bpm,
-                    cadence = current.cadence,
+                    cadence = cadence,
                     elapsedSeconds = current.elapsedSeconds + 1
                 )
             }
@@ -119,12 +128,14 @@ class HeartRateBleController(
 
     fun stopWorkout() {
         pauseWorkout()
+        cadenceMonitor.stopTracking()
         workoutSessionCoordinator.stopSession()
         publishUiState()
     }
 
     fun close() {
         pauseWorkout()
+        cadenceMonitor.close()
         monitor.close()
         scope.cancel()
     }
@@ -150,7 +161,10 @@ class HeartRateBleController(
 
         fun getInstance(context: Context): HeartRateBleController {
             return instance ?: synchronized(this) {
-                instance ?: HeartRateBleController(HeartRateBleClient(context.applicationContext)).also {
+                instance ?: HeartRateBleController(
+                    monitor = HeartRateBleClient(context.applicationContext),
+                    cadenceMonitor = AndroidStepCadenceMonitor(context.applicationContext)
+                ).also {
                     instance = it
                 }
             }
