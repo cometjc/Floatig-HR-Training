@@ -36,7 +36,6 @@ Implemented today:
 
 Not implemented yet:
 
-- Persistence for settings, plans, or workout history
 - Fully editable and persistent training editor
 - CI distribution / release workflow
 
@@ -52,6 +51,12 @@ Implemented in `plan-003-add-cadence-data`:
 - Phone step-counter cadence source with `ACTIVITY_RECOGNITION` permission
 - Cadence normalized into the shared workout telemetry timeline
 - Cadence samples flowing into the prediction engine history
+
+Implemented in `plan-004-persist-data`:
+
+- Room database for workouts, workout samples, training plans, and plan segments
+- Room table for learned heart-rate delay estimates used by pacing prediction
+- DataStore-backed user preferences for max HR, zone ranges, alert toggles, and overlay settings
 
 ## Product requirements
 

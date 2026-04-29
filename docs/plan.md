@@ -21,12 +21,7 @@ Planning notes:
 
 ---
 
-plan-004-persist-data:
-	DataStore: max HR, custom zone ranges, alert preferences, overlay preferences.
-	Room: workout sessions, HR/cadence samples, learned lag estimates, training
-	plans and segments.
-
-plan-005-complete-training-editor: plan-004-persist-data
+plan-005-complete-training-editor:
 	Make segment add/edit/delete persistent. Implement repeat-block editing and
 	segment selection modal. Add validation: at least one segment, repeat selection
 	minimums, duration > 0.
