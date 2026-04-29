@@ -103,6 +103,11 @@ Implemented in `plan-012-sentry-telemetry`:
 - Extended `SentryTelemetry` with BLE scan/connect/disconnect breadcrumbs, overlay permission and lifecycle notes, foreground service start capture, workout start/stop/segment breadcrumbs, optional child spans under the active transaction, and a cold-start transaction wrapper in `MainActivity`
 - BLE client wraps scan/connect/disconnect in try/catch with non-PII error capture; overlay add/remove and alert paths capture failures without logging device addresses
 
+Implemented in `plan-013-sentry-release-hardening` (keyword: `sentry-release-hardening`):
+
+- Sentry Gradle plugin now defaults to `SENTRY_UPLOAD_PROGUARD_MAPPING=false` and `SENTRY_INCLUDE_SOURCE_CONTEXT=false`, so ProGuard/R8 mapping upload and source context exposure are opt-in per environment
+- Android CI pins both policy env vars to `false` and limits the optional Sentry release creation step to push events, reducing accidental metadata publication during pull-request validation
+
 ## Product requirements
 
 ### Core experience

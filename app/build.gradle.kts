@@ -75,7 +75,13 @@ sentry {
     org.set("jethroyu")
     projectName.set("floatig-hr-training")
 
-    // this will upload your source code to Sentry to show it as part of the stack traces
-    // disable if you don't want to expose your sources
-    includeSourceContext.set(true)
+    val allowMappingUpload = providers.environmentVariable("SENTRY_UPLOAD_PROGUARD_MAPPING")
+        .map { it.equals("true", ignoreCase = true) }
+        .orElse(false)
+    val allowSourceContext = providers.environmentVariable("SENTRY_INCLUDE_SOURCE_CONTEXT")
+        .map { it.equals("true", ignoreCase = true) }
+        .orElse(false)
+
+    autoUploadProguardMapping.set(allowMappingUpload.get())
+    includeSourceContext.set(allowSourceContext.get())
 }

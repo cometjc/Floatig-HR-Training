@@ -10,6 +10,9 @@ permissions:
 jobs:
   app-debug:
     runs-on: ubuntu-latest
+    env:
+      SENTRY_UPLOAD_PROGUARD_MAPPING: "false"
+      SENTRY_INCLUDE_SOURCE_CONTEXT: "false"
 
     steps:
       - name: Checkout
@@ -49,6 +52,10 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
+            echo "Not a push event; skipping Sentry release."
+            exit 0
+          fi
           if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
             echo "SENTRY_AUTH_TOKEN not set; skipping Sentry release."
             exit 0

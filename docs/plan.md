@@ -21,12 +21,7 @@ Planning notes:
 
 ---
 
-plan-013-sentry-release-hardening:
-	Review ProGuard/R8 mapping upload for release variants, decide whether source
-	context should remain enabled outside internal builds, and document the chosen
-	production exposure policy.
-
-plan-014-firebase-distribution: plan-013-sentry-release-hardening
+plan-014-firebase-distribution:
 	Upload debug/internal APK to Firebase App Distribution after CI tests and
 	Sentry release steps pass. Use CI secrets for Firebase credentials and tester
 	groups. Deliver install notifications through Firebase instead of ADB.
