@@ -108,6 +108,11 @@ Implemented in `plan-013-sentry-release-hardening` (keyword: `sentry-release-har
 - Sentry Gradle plugin now defaults to `SENTRY_UPLOAD_PROGUARD_MAPPING=false` and `SENTRY_INCLUDE_SOURCE_CONTEXT=false`, so ProGuard/R8 mapping upload and source context exposure are opt-in per environment
 - Android CI pins both policy env vars to `false` and limits the optional Sentry release creation step to push events, reducing accidental metadata publication during pull-request validation
 
+Implemented in `plan-014-firebase-distribution` (`firebase-distribution`):
+
+- Android CI now optionally publishes the debug APK to Firebase App Distribution after tests, assembly, Sentry release, and artifact upload complete on push events.
+- Distribution uses CI secrets (`FIREBASE_SERVICE_ACCOUNT`, `FIREBASE_APP_ID_ANDROID`, optional `FIREBASE_TESTER_GROUPS`) so tester notifications and install flow move through Firebase instead of manual ADB install.
+
 Implemented in `plan-015-ui-visual-qa` (`ui-visual-qa`):
 
 - Added `docs/ui-reference/app-screens/` as the canonical location for app-side screenshot captures used during UI visual QA.
