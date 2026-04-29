@@ -1,5 +1,6 @@
 package com.cometjc.floatighrtraining.telemetry
 
+import io.sentry.SentryLevel
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -67,9 +68,10 @@ private class RecordingSentryEventSink : SentryEventSink {
     override fun addBreadcrumb(
         category: String,
         message: String,
-        data: Map<String, String>
+        data: Map<String, String>,
+        level: SentryLevel
     ) {
-        breadcrumbs += RecordedBreadcrumb(category, message, data)
+        breadcrumbs += RecordedBreadcrumb(category, message, data, level)
     }
 
     override fun captureException(
@@ -84,7 +86,8 @@ private class RecordingSentryEventSink : SentryEventSink {
 private data class RecordedBreadcrumb(
     val category: String,
     val message: String,
-    val data: Map<String, String>
+    val data: Map<String, String>,
+    val level: SentryLevel = SentryLevel.INFO
 )
 
 private data class RecordedException(

@@ -77,6 +77,26 @@ Implemented in `plan-006-improve-prediction`:
 - Added prediction confidence score for workout/overlay display
 - Added Room persistence model for per-user/per-zone delay estimates
 
+Implemented in `plan-007-overlay-settings`:
+
+- Settings screen drives DataStore overlay preferences: floating mode, compact/standard/large bar size, transparency slider, reset overlay anchor
+- Per-alert sound and vibration toggles for too-low (e.g. SpeedUp) and too-high (SlowDown) pacing hints, layered on global sound/vibration switches
+- Floating overlay service applies user prefs (hide when disabled), scales the ambient zone bar, adjusts window alpha and dimming, and persists drag position as normalized anchors
+
+Implemented in `plan-008-edge-to-edge`:
+
+- `MainActivity` uses `enableEdgeToEdge()`; manifest keeps `adjustResize` on the main activity
+- Bottom navigation, training home list and CTA, history, settings, and in-workout column apply `navigationBarsPadding` / `imePadding` where content meets system bars or the IME
+
+Implemented in `plan-011-sentry-releases`:
+
+- After a successful debug build, CI optionally creates a Sentry release named `com.cometjc.floatighrtraining@<versionName>+<versionCode>-<shortSha>`, runs `set-commits --local`, finalizes, and records deploy `internal-test` when `SENTRY_AUTH_TOKEN` is configured
+
+Implemented in `plan-012-sentry-telemetry`:
+
+- Extended `SentryTelemetry` with BLE scan/connect/disconnect breadcrumbs, overlay permission and lifecycle notes, foreground service start capture, workout start/stop/segment breadcrumbs, optional child spans under the active transaction, and a cold-start transaction wrapper in `MainActivity`
+- BLE client wraps scan/connect/disconnect in try/catch with non-PII error capture; overlay add/remove and alert paths capture failures without logging device addresses
+
 ## Product requirements
 
 ### Core experience

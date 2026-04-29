@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import com.cometjc.floatighrtraining.ui.FloatingHrApp
 
 class MainActivity : ComponentActivity() {
@@ -16,10 +17,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        requestRuntimePermissions()
-        setContent {
-            FloatingHrApp()
+        SentryTelemetry.instance.runAppColdStartSpan {
+            enableEdgeToEdge()
+            requestRuntimePermissions()
+            setContent {
+                FloatingHrApp()
+            }
         }
     }
 

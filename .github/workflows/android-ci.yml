@@ -44,6 +44,28 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
 
+      - name: Sentry release (optional, requires secrets)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "SENTRY_AUTH_TOKEN not set; skipping Sentry release."
+            exit 0
+          fi
+          curl -sL https://sentry.io/get-cli/ | sh
+          export PATH="$HOME/.local/bin:$HOME/.sentry-cli/bin:$PATH"
+          VERSION_NAME=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          RELEASE="com.cometjc.floatighrtraining@${VERSION_NAME}+${VERSION_CODE}-${SHORT_SHA}"
+          export SENTRY_ORG=jethroyu
+          export SENTRY_PROJECT=floatig-hr-training
+          sentry-cli releases new "$RELEASE" || true
+          sentry-cli releases set-commits "$RELEASE" --local || true
+          sentry-cli releases finalize "$RELEASE" || true
+          sentry-cli releases deploys "$RELEASE" new -e internal-test || true
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

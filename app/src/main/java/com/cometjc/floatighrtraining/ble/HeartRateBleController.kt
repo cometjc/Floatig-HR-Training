@@ -5,6 +5,7 @@ import com.cometjc.floatighrtraining.cadence.AndroidStepCadenceMonitor
 import com.cometjc.floatighrtraining.cadence.CadenceMonitor
 import com.cometjc.floatighrtraining.cadence.NoopCadenceMonitor
 import com.cometjc.floatighrtraining.model.DiscoveredHeartRateDevice
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import com.cometjc.floatighrtraining.model.TrainingPlan
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,15 +67,19 @@ class HeartRateBleController(
     }
 
     fun startScan() {
-        isScanning.value = true
-        monitor.startScan()
-        publishUiState()
+        SentryTelemetry.instance.runBleOperationSpan("ble.ui.scan") {
+            isScanning.value = true
+            monitor.startScan()
+            publishUiState()
+        }
     }
 
     fun stopScan() {
-        isScanning.value = false
-        monitor.stopScan()
-        publishUiState()
+        SentryTelemetry.instance.runBleOperationSpan("ble.ui.scan_stop") {
+            isScanning.value = false
+            monitor.stopScan()
+            publishUiState()
+        }
     }
 
     fun selectDevice(address: String) {
@@ -84,21 +89,27 @@ class HeartRateBleController(
 
     fun connectSelectedDevice() {
         val address = selectedDeviceAddress.value ?: return
-        isConnecting.value = true
-        monitor.connect(address)
-        publishUiState()
+        SentryTelemetry.instance.runBleOperationSpan("ble.ui.connect") {
+            isConnecting.value = true
+            monitor.connect(address)
+            publishUiState()
+        }
     }
 
     fun disconnect() {
-        isConnecting.value = false
-        monitor.disconnect()
-        publishUiState()
+        SentryTelemetry.instance.runBleOperationSpan("ble.ui.disconnect") {
+            isConnecting.value = false
+            monitor.disconnect()
+            publishUiState()
+        }
     }
 
     fun startWorkout(training: TrainingPlan) {
-        cadenceMonitor.startTracking()
-        workoutSessionCoordinator.startSession(training, monitor.connectedDeviceName.value)
-        resumeWorkout()
+        SentryTelemetry.instance.runWorkoutLifecycleSpan("workout.start") {
+            cadenceMonitor.startTracking()
+            workoutSessionCoordinator.startSession(training, monitor.connectedDeviceName.value)
+            resumeWorkout()
+        }
     }
 
     fun pauseWorkout() {
@@ -127,10 +138,12 @@ class HeartRateBleController(
     }
 
     fun stopWorkout() {
-        pauseWorkout()
-        cadenceMonitor.stopTracking()
-        workoutSessionCoordinator.stopSession()
-        publishUiState()
+        SentryTelemetry.instance.runWorkoutLifecycleSpan("workout.stop") {
+            pauseWorkout()
+            cadenceMonitor.stopTracking()
+            workoutSessionCoordinator.stopSession()
+            publishUiState()
+        }
     }
 
     fun close() {

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import java.util.UUID
 
 class HeartRateBleClient(
@@ -79,9 +80,14 @@ class HeartRateBleClient(
 
     override fun startScan() {
         if (scanJob?.isActive == true) return
+        SentryTelemetry.instance.bleScanStarted()
         scanJob = scope.launch {
-            api.searchForDevice("Polar H10").collect { deviceInfo ->
-                upsertDevice(deviceInfo)
+            try {
+                api.searchForDevice("Polar H10").collect { deviceInfo ->
+                    upsertDevice(deviceInfo)
+                }
+            } catch (e: Throwable) {
+                SentryTelemetry.instance.captureBleError(e, "ble.scan")
             }
         }
     }
@@ -89,19 +95,31 @@ class HeartRateBleClient(
     override fun stopScan() {
         scanJob?.cancel()
         scanJob = null
+        SentryTelemetry.instance.bleScanStopped()
     }
 
     override fun connect(address: String) {
-        stopScan()
-        connectedIdentifier = address
-        api.connectToDevice(address)
+        SentryTelemetry.instance.bleConnectAttempt()
+        try {
+            stopScan()
+            connectedIdentifier = address
+            api.connectToDevice(address)
+        } catch (e: Throwable) {
+            SentryTelemetry.instance.captureBleError(e, "ble.connect")
+        }
     }
 
     override fun disconnect() {
-        connectedIdentifier?.let(api::disconnectFromDevice)
-        connectedIdentifier = null
-        _connectedDeviceName.value = null
-        _heartRate.value = 0
+        try {
+            connectedIdentifier?.let(api::disconnectFromDevice)
+        } catch (e: Throwable) {
+            SentryTelemetry.instance.captureBleError(e, "ble.disconnect")
+        } finally {
+            connectedIdentifier = null
+            _connectedDeviceName.value = null
+            _heartRate.value = 0
+            SentryTelemetry.instance.bleDisconnected()
+        }
     }
 
     override fun close() {

@@ -25,6 +25,10 @@ class UserPreferencesDataStoreTest {
         assertEquals(5, preferences.zoneRanges.size)
         assertTrue(preferences.alertPreferences.soundEnabled)
         assertTrue(preferences.alertPreferences.vibrationEnabled)
+        assertTrue(preferences.alertPreferences.tooLowSoundEnabled)
+        assertTrue(preferences.alertPreferences.tooLowVibrationEnabled)
+        assertTrue(preferences.alertPreferences.tooHighSoundEnabled)
+        assertTrue(preferences.alertPreferences.tooHighVibrationEnabled)
         assertTrue(preferences.overlayPreferences.floatingModeEnabled)
     }
 
@@ -49,7 +53,11 @@ class UserPreferencesDataStoreTest {
                 soundEnabled = false,
                 vibrationEnabled = true,
                 tooLowEnabled = true,
-                tooHighEnabled = false
+                tooHighEnabled = false,
+                tooLowSoundEnabled = false,
+                tooLowVibrationEnabled = true,
+                tooHighSoundEnabled = true,
+                tooHighVibrationEnabled = false
             ),
             overlayPreferences = OverlayPreferences(
                 floatingModeEnabled = false,

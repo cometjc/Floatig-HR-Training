@@ -9,6 +9,7 @@ import com.cometjc.floatighrtraining.prediction.HeartRateDelayEstimate
 import com.cometjc.floatighrtraining.prediction.PacingDecision
 import com.cometjc.floatighrtraining.prediction.PacingPrediction
 import com.cometjc.floatighrtraining.prediction.PacingPredictionEngine
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import com.cometjc.floatighrtraining.prediction.TrainingTelemetrySample
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +53,7 @@ class WorkoutSessionStore(
 ) {
     private val _state = MutableStateFlow(WorkoutSessionState())
     val state: StateFlow<WorkoutSessionState> = _state
+    private var lastPublishedSegmentIndex: Int? = null
 
     fun start(training: TrainingPlan, connectedDeviceName: String? = null) {
         predictionEngine.reset()
@@ -76,6 +78,8 @@ class WorkoutSessionStore(
             prediction = prediction,
             samples = seedSamples
         )
+        lastPublishedSegmentIndex = 0
+        SentryTelemetry.instance.workoutSessionStarted(segments.size)
     }
 
     fun recordTelemetry(bpm: Int, cadence: Int, elapsedSeconds: Int) {
@@ -104,11 +108,17 @@ class WorkoutSessionStore(
             prediction = prediction,
             samples = updatedSamples
         )
+        if (lastPublishedSegmentIndex != currentSegmentIndex) {
+            lastPublishedSegmentIndex = currentSegmentIndex
+            SentryTelemetry.instance.workoutSegmentChanged(currentSegmentIndex)
+        }
     }
 
     fun stop() {
         predictionEngine.reset()
         _state.value = WorkoutSessionState()
+        lastPublishedSegmentIndex = null
+        SentryTelemetry.instance.workoutSessionStopped()
     }
 
     private fun expandedSegments(training: TrainingPlan): List<TrainingSegment> {

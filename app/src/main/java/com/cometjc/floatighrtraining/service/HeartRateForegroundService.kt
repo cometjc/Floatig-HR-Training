@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.cometjc.floatighrtraining.R
+import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
 import com.cometjc.floatighrtraining.model.TrainingPlan
 import com.cometjc.floatighrtraining.workout.WorkoutSessionState
 import com.cometjc.floatighrtraining.workout.WorkoutSessionStore
@@ -25,7 +26,13 @@ class HeartRateForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         ensureChannel()
-        startForeground(NOTIFICATION_ID, notification("Waiting for heart rate belt"))
+        try {
+            startForeground(NOTIFICATION_ID, notification("Waiting for heart rate belt"))
+            SentryTelemetry.instance.foregroundServiceStarted()
+        } catch (e: Throwable) {
+            SentryTelemetry.instance.foregroundServiceStartFailed(e)
+            throw e
+        }
         serviceScope.launch {
             sessionStore.state.collectLatest { state ->
                 startForeground(NOTIFICATION_ID, notification(state.notificationText()))

@@ -25,7 +25,11 @@ class UserPreferencesDataStore(
                 soundEnabled = stored[KEY_ALERT_SOUND] ?: true,
                 vibrationEnabled = stored[KEY_ALERT_VIBRATION] ?: true,
                 tooLowEnabled = stored[KEY_ALERT_TOO_LOW] ?: true,
-                tooHighEnabled = stored[KEY_ALERT_TOO_HIGH] ?: true
+                tooHighEnabled = stored[KEY_ALERT_TOO_HIGH] ?: true,
+                tooLowSoundEnabled = stored[KEY_ALERT_TOO_LOW_SOUND] ?: true,
+                tooLowVibrationEnabled = stored[KEY_ALERT_TOO_LOW_VIBRATION] ?: true,
+                tooHighSoundEnabled = stored[KEY_ALERT_TOO_HIGH_SOUND] ?: true,
+                tooHighVibrationEnabled = stored[KEY_ALERT_TOO_HIGH_VIBRATION] ?: true
             ),
             overlayPreferences = OverlayPreferences(
                 floatingModeEnabled = stored[KEY_OVERLAY_FLOATING] ?: true,
@@ -37,6 +41,13 @@ class UserPreferencesDataStore(
         )
     }
 
+    suspend fun updateOverlayAnchors(anchorX: Float, anchorY: Float) {
+        dataStore.edit { stored ->
+            stored[KEY_OVERLAY_ANCHOR_X] = anchorX
+            stored[KEY_OVERLAY_ANCHOR_Y] = anchorY
+        }
+    }
+
     suspend fun save(preferences: UserPreferences) {
         dataStore.edit { stored ->
             stored[KEY_MAX_HEART_RATE] = preferences.maxHeartRate
@@ -45,6 +56,10 @@ class UserPreferencesDataStore(
             stored[KEY_ALERT_VIBRATION] = preferences.alertPreferences.vibrationEnabled
             stored[KEY_ALERT_TOO_LOW] = preferences.alertPreferences.tooLowEnabled
             stored[KEY_ALERT_TOO_HIGH] = preferences.alertPreferences.tooHighEnabled
+            stored[KEY_ALERT_TOO_LOW_SOUND] = preferences.alertPreferences.tooLowSoundEnabled
+            stored[KEY_ALERT_TOO_LOW_VIBRATION] = preferences.alertPreferences.tooLowVibrationEnabled
+            stored[KEY_ALERT_TOO_HIGH_SOUND] = preferences.alertPreferences.tooHighSoundEnabled
+            stored[KEY_ALERT_TOO_HIGH_VIBRATION] = preferences.alertPreferences.tooHighVibrationEnabled
             stored[KEY_OVERLAY_FLOATING] = preferences.overlayPreferences.floatingModeEnabled
             stored[KEY_OVERLAY_SIZE] = preferences.overlayPreferences.size.name
             stored[KEY_OVERLAY_TRANSPARENCY] = preferences.overlayPreferences.transparencyPercent
@@ -63,6 +78,10 @@ class UserPreferencesDataStore(
         val KEY_ALERT_VIBRATION = booleanPreferencesKey("alert_vibration_enabled")
         val KEY_ALERT_TOO_LOW = booleanPreferencesKey("alert_too_low_enabled")
         val KEY_ALERT_TOO_HIGH = booleanPreferencesKey("alert_too_high_enabled")
+        val KEY_ALERT_TOO_LOW_SOUND = booleanPreferencesKey("alert_too_low_sound_enabled")
+        val KEY_ALERT_TOO_LOW_VIBRATION = booleanPreferencesKey("alert_too_low_vibration_enabled")
+        val KEY_ALERT_TOO_HIGH_SOUND = booleanPreferencesKey("alert_too_high_sound_enabled")
+        val KEY_ALERT_TOO_HIGH_VIBRATION = booleanPreferencesKey("alert_too_high_vibration_enabled")
         val KEY_OVERLAY_FLOATING = booleanPreferencesKey("overlay_floating_mode_enabled")
         val KEY_OVERLAY_SIZE = stringPreferencesKey("overlay_size")
         val KEY_OVERLAY_TRANSPARENCY = intPreferencesKey("overlay_transparency_percent")

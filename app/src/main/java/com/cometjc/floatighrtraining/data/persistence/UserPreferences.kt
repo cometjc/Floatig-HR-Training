@@ -21,7 +21,13 @@ data class AlertPreferences(
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val tooLowEnabled: Boolean = true,
-    val tooHighEnabled: Boolean = true
+    val tooHighEnabled: Boolean = true,
+    /** Per-alert toggles: too-low pacing (e.g. SpeedUp) */
+    val tooLowSoundEnabled: Boolean = true,
+    val tooLowVibrationEnabled: Boolean = true,
+    /** Per-alert toggles: too-high pacing (SlowDownSoon / SlowDownNow) */
+    val tooHighSoundEnabled: Boolean = true,
+    val tooHighVibrationEnabled: Boolean = true
 )
 
 data class OverlayPreferences(

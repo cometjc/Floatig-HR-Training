@@ -10,6 +10,8 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import com.cometjc.floatighrtraining.data.persistence.OverlayPreferences
+import com.cometjc.floatighrtraining.data.persistence.OverlaySizePreference
 import com.cometjc.floatighrtraining.model.defaultZones
 import com.cometjc.floatighrtraining.prediction.PacingDecision
 import com.cometjc.floatighrtraining.workout.WorkoutSessionState
@@ -26,7 +28,13 @@ data class FloatingZoneBarState(
     val bpm: Int,
     val targetZoneId: String,
     val decision: PacingDecision,
-    val zones: List<FloatingZoneSegment> = DefaultFloatingZones
+    val zones: List<FloatingZoneSegment> = DefaultFloatingZones,
+    /** Measured overlay width in px; 0 lets the view fall back to ~520dp. */
+    val overlayWidthPx: Int = 0,
+    /** Measured overlay height in px; 0 derives height from width using the default aspect ratio. */
+    val overlayHeightPx: Int = 0,
+    /** 0–100; higher values make inactive zone dimming lighter (more transparent look). */
+    val overlayTransparencyPercent: Int = 20
 ) {
     companion object {
         fun fromIntent(intent: android.content.Intent?): FloatingZoneBarState {
@@ -83,22 +91,35 @@ class FloatingZoneBarView @JvmOverloads constructor(
 
     fun update(newState: FloatingZoneBarState) {
         state = newState
+        requestLayout()
         invalidate()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        setMeasuredDimension(520, 136)
+        val density = resources.displayMetrics.density
+        val defaultWidth = (520f * density).toInt()
+        val widthPx = if (state.overlayWidthPx > 0) state.overlayWidthPx else defaultWidth
+        val heightPx = if (state.overlayHeightPx > 0) {
+            state.overlayHeightPx
+        } else {
+            (136f / 520f * widthPx).toInt().coerceAtLeast(1)
+        }
+        setMeasuredDimension(widthPx.coerceAtLeast(1), heightPx.coerceAtLeast(1))
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val zones = state.zones
         if (zones.isEmpty()) return
-        val barLeft = 38f
-        val barTop = 54f
-        val barRight = width - 38f
-        val barBottom = 82f
-        val radius = 14f
+        val scale = width / 520f
+        val barLeft = 38f * scale
+        val barTop = 54f * scale
+        val barRight = width - 38f * scale
+        val barBottom = 82f * scale
+        val radius = 14f * scale
+        val t = state.overlayTransparencyPercent.coerceIn(0, 100)
+        dimPaint.alpha = (138 * (1f - t / 100f)).toInt().coerceIn(24, 200)
+        textPaint.textSize = 34f * scale
 
         zones.forEach { zone ->
             val left = FloatingZoneBarGeometry.positionForBpm(zone.minBpm, zones, barLeft, barRight)
@@ -117,7 +138,7 @@ class FloatingZoneBarView @JvmOverloads constructor(
             rect.set(left, barTop, right, barBottom)
             if (active) {
                 glowPaint.color = alertGlowColor(state.decision)
-                glowPaint.setShadowLayer(22f, 0f, 0f, glowPaint.color)
+                glowPaint.setShadowLayer(22f * scale, 0f, 0f, glowPaint.color)
                 canvas.drawRoundRect(rect, radius, radius, glowPaint)
             }
             canvas.drawRoundRect(rect, radius, radius, barPaint)
@@ -127,14 +148,15 @@ class FloatingZoneBarView @JvmOverloads constructor(
         barPaint.alpha = 255
 
         val indicatorX = FloatingZoneBarGeometry.positionForBpm(state.bpm, zones, barLeft, barRight)
-        indicatorPaint.setShadowLayer(12f, 0f, 0f, Color.WHITE)
-        canvas.drawLine(indicatorX, barTop - 14f, indicatorX, barBottom + 14f, indicatorPaint)
+        indicatorPaint.strokeWidth = 7f * scale
+        indicatorPaint.setShadowLayer(12f * scale, 0f, 0f, Color.WHITE)
+        canvas.drawLine(indicatorX, barTop - 14f * scale, indicatorX, barBottom + 14f * scale, indicatorPaint)
 
         textPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("${state.bpm} BPM", 38f, 36f, textPaint)
+        canvas.drawText("${state.bpm} BPM", 38f * scale, 36f * scale, textPaint)
         textPaint.textAlign = Paint.Align.RIGHT
         textPaint.color = alertGlowColor(state.decision)
-        canvas.drawText(state.decision.overlayLabel(), width - 38f, 36f, textPaint)
+        canvas.drawText(state.decision.overlayLabel(), width - 38f * scale, 36f * scale, textPaint)
         textPaint.color = Color.WHITE
     }
 
@@ -178,6 +200,21 @@ fun alertGlowColor(decision: PacingDecision): Int = when (decision) {
     PacingDecision.Maintain -> Color.rgb(55, 201, 107)
     PacingDecision.SlowDownSoon -> Color.rgb(255, 179, 0)
     PacingDecision.SlowDownNow -> Color.rgb(255, 69, 58)
+}
+
+fun FloatingZoneBarState.withOverlayVisual(overlay: OverlayPreferences, density: Float): FloatingZoneBarState {
+    val widthDp = when (overlay.size) {
+        OverlaySizePreference.COMPACT -> 420f
+        OverlaySizePreference.STANDARD -> 520f
+        OverlaySizePreference.LARGE -> 640f
+    }
+    val widthPx = (widthDp * density).toInt().coerceAtLeast(1)
+    val heightPx = (136f / 520f * widthDp * density).toInt().coerceAtLeast(1)
+    return copy(
+        overlayWidthPx = widthPx,
+        overlayHeightPx = heightPx,
+        overlayTransparencyPercent = overlay.transparencyPercent.coerceIn(0, 100)
+    )
 }
 
 fun WorkoutSessionState.toFloatingZoneBarState(): FloatingZoneBarState {

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -57,6 +59,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -90,7 +93,12 @@ import androidx.compose.ui.unit.sp
 import com.cometjc.floatighrtraining.ble.HeartRateBleController
 import com.cometjc.floatighrtraining.ble.HeartRateBleUiState
 import com.cometjc.floatighrtraining.data.SampleRepository
+import com.cometjc.floatighrtraining.data.persistence.AlertPreferences
+import com.cometjc.floatighrtraining.data.persistence.OverlaySizePreference
 import com.cometjc.floatighrtraining.data.persistence.PersistedTrainingPlan
+import com.cometjc.floatighrtraining.data.persistence.UserPreferences
+import com.cometjc.floatighrtraining.data.persistence.userPreferencesDataStore
+import com.cometjc.floatighrtraining.data.persistence.UserPreferencesDataStore
 import com.cometjc.floatighrtraining.data.persistence.TrainingDatabaseProvider
 import com.cometjc.floatighrtraining.data.persistence.TrainingPlanRepository
 import com.cometjc.floatighrtraining.model.AlertState
@@ -103,8 +111,12 @@ import com.cometjc.floatighrtraining.prediction.PacingDecision
 import com.cometjc.floatighrtraining.service.FloatingHeartRateService
 import com.cometjc.floatighrtraining.service.HeartRateForegroundService
 import com.cometjc.floatighrtraining.telemetry.SentryTelemetry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlin.math.roundToInt
 
 private val DarkBackground = Color(0xFF050607)
 private val CardBackground = Color(0xFF1D1D1F)
@@ -159,7 +171,10 @@ fun FloatingHrApp() {
                     containerColor = DarkBackground,
                     contentWindowInsets = WindowInsets.safeDrawing,
                     bottomBar = {
-                        NavigationBar(containerColor = Color(0xEE111113)) {
+                        NavigationBar(
+                            modifier = Modifier.navigationBarsPadding(),
+                            containerColor = Color(0xEE111113)
+                        ) {
                             AppTopLevelDestination.entries.forEach { tab ->
                                 NavigationBarItem(
                                     selected = navigationState.topLevelDestination == tab,
@@ -221,6 +236,9 @@ private fun startMonitoringServices(
     bleController: HeartRateBleController
 ) {
     val overlayPermissionGranted = Settings.canDrawOverlays(context)
+    val prefs = runBlocking(Dispatchers.IO) {
+        context.applicationContext.userPreferencesDataStore().preferences.first()
+    }
     SentryTelemetry.instance.monitoringServicesStarting(overlayPermissionGranted)
     bleController.startWorkout(training)
 
@@ -231,17 +249,24 @@ private fun startMonitoringServices(
         context.startService(foregroundIntent)
     }
 
-    if (overlayPermissionGranted) {
-        context.startService(Intent(context, FloatingHeartRateService::class.java))
-        SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = true)
-    } else {
-        SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = false)
-        context.startActivity(
-            Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:${context.packageName}")
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+    when {
+        !overlayPermissionGranted -> {
+            SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = false)
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+        prefs.overlayPreferences.floatingModeEnabled -> {
+            context.startService(Intent(context, FloatingHeartRateService::class.java))
+            SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = true)
+        }
+        else -> {
+            SentryTelemetry.instance.overlaySkippedUserDisabled()
+            SentryTelemetry.instance.monitoringServicesStarted(overlayStarted = false)
+        }
     }
 }
 
@@ -294,7 +319,9 @@ private fun TrainingHome(
             .consumeWindowInsets(scaffoldPadding)
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             contentPadding = listPadding,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
@@ -398,6 +425,8 @@ private fun TrainingHome(
             onClick = onStart,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .imePadding()
                 .padding(
                     start = ctaStartPadding,
                     end = ctaEndPadding,
@@ -776,6 +805,8 @@ private fun WorkoutScreen(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                .navigationBarsPadding()
+                .imePadding()
                 .padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -928,6 +959,8 @@ private fun HistoryScreen(scaffoldPadding: PaddingValues) {
         modifier = Modifier
             .fillMaxSize()
             .consumeWindowInsets(scaffoldPadding)
+            .imePadding()
+            .navigationBarsPadding()
     ) {
         item {
             Text("Verlauf", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -953,6 +986,16 @@ private fun HistoryScreen(scaffoldPadding: PaddingValues) {
 private fun SettingsScreen(scaffoldPadding: PaddingValues) {
     var customZones by remember { mutableStateOf(false) }
     var maxHr by remember { mutableIntStateOf(183) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefsStore = remember(context.applicationContext) {
+        context.applicationContext.userPreferencesDataStore()
+    }
+    val prefs by prefsStore.preferences.collectAsState(initial = UserPreferences())
+    var transparencyDraft by remember { mutableIntStateOf(prefs.overlayPreferences.transparencyPercent) }
+    LaunchedEffect(prefs.overlayPreferences.transparencyPercent) {
+        transparencyDraft = prefs.overlayPreferences.transparencyPercent
+    }
     LazyColumn(
         contentPadding = combinedPadding(
             base = scaffoldPadding,
@@ -964,6 +1007,8 @@ private fun SettingsScreen(scaffoldPadding: PaddingValues) {
         modifier = Modifier
             .fillMaxSize()
             .consumeWindowInsets(scaffoldPadding)
+            .imePadding()
+            .navigationBarsPadding()
     ) {
         item {
             Text("Einstellungen", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
@@ -1012,12 +1057,191 @@ private fun SettingsScreen(scaffoldPadding: PaddingValues) {
             }
         }
         item {
+            Text("Schwebende HR-Leiste", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Text(
+                "Transparente Zone-Leiste über anderen Apps; Ton und Vibration folgen den Alarmeinstellungen unten.",
+                color = MutedText
+            )
+        }
+        item {
             AppCard {
-                Text("Floating HR Bar", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text("其他 App 上方顯示即時 BPM、Zone 與加快/放慢提示。", color = MutedText)
-                Text("提示：視覺變色、聲音、震動同步觸發。", color = MutedText)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Schwebender Modus", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Overlay während des Trainings anzeigen", color = MutedText)
+                    }
+                    Switch(
+                        checked = prefs.overlayPreferences.floatingModeEnabled,
+                        onCheckedChange = { enabled ->
+                            scope.launch {
+                                prefsStore.save(
+                                    prefs.copy(
+                                        overlayPreferences = prefs.overlayPreferences.copy(floatingModeEnabled = enabled)
+                                    )
+                                )
+                            }
+                        }
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Größe", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MutedText)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OverlaySizePreference.entries.forEach { size ->
+                        val active = prefs.overlayPreferences.size == size
+                        val label = when (size) {
+                            OverlaySizePreference.COMPACT -> "Kompakt"
+                            OverlaySizePreference.STANDARD -> "Standard"
+                            OverlaySizePreference.LARGE -> "Groß"
+                        }
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    prefsStore.save(
+                                        prefs.copy(overlayPreferences = prefs.overlayPreferences.copy(size = size))
+                                    )
+                                }
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (active) Cyan else MutedText
+                            )
+                        ) {
+                            Text(label, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Transparenz", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MutedText)
+                Slider(
+                    value = transparencyDraft.toFloat(),
+                    onValueChange = { transparencyDraft = it.roundToInt().coerceIn(0, 100) },
+                    onValueChangeFinished = {
+                        scope.launch {
+                            prefsStore.save(
+                                prefs.copy(
+                                    overlayPreferences = prefs.overlayPreferences.copy(
+                                        transparencyPercent = transparencyDraft
+                                    )
+                                )
+                            )
+                        }
+                    },
+                    valueRange = 0f..100f,
+                    steps = 19
+                )
+                Text("${transparencyDraft}%", color = MutedText, fontSize = 14.sp)
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            prefsStore.updateOverlayAnchors(anchorX = 0.5f, anchorY = 0.85f)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Overlay-Position zurücksetzen")
+                }
             }
         }
+        item {
+            Text("Alarme", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Text("Ton und Vibration für Pacing-Hinweise (zu niedrig / zu hoch).", color = MutedText)
+        }
+        item {
+            AppCard {
+                alertToggleRow(
+                    title = "Ton (global)",
+                    subtitle = "Alle Signaltöne",
+                    checked = prefs.alertPreferences.soundEnabled,
+                    onChange = { v ->
+                        scope.launch {
+                            prefsStore.save(
+                                prefs.copy(alertPreferences = prefs.alertPreferences.copy(soundEnabled = v))
+                            )
+                        }
+                    }
+                )
+                Spacer(Modifier.height(12.dp))
+                alertToggleRow(
+                    title = "Vibration (global)",
+                    subtitle = "Alle Vibrationsmuster",
+                    checked = prefs.alertPreferences.vibrationEnabled,
+                    onChange = { v ->
+                        scope.launch {
+                            prefsStore.save(
+                                prefs.copy(alertPreferences = prefs.alertPreferences.copy(vibrationEnabled = v))
+                            )
+                        }
+                    }
+                )
+                Spacer(Modifier.height(16.dp))
+                Text("Zu niedrige Intensität (z. B. SpeedUp)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                alertToggleRow(
+                    title = "Hinweise aktiv",
+                    checked = prefs.alertPreferences.tooLowEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooLowEnabled = v) } } }
+                )
+                alertToggleRow(
+                    title = "Ton",
+                    checked = prefs.alertPreferences.tooLowSoundEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooLowSoundEnabled = v) } } }
+                )
+                alertToggleRow(
+                    title = "Vibration",
+                    checked = prefs.alertPreferences.tooLowVibrationEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooLowVibrationEnabled = v) } } }
+                )
+                Spacer(Modifier.height(16.dp))
+                Text("Zu hohe Intensität (SlowDown)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                alertToggleRow(
+                    title = "Hinweise aktiv",
+                    checked = prefs.alertPreferences.tooHighEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooHighEnabled = v) } } }
+                )
+                alertToggleRow(
+                    title = "Ton",
+                    checked = prefs.alertPreferences.tooHighSoundEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooHighSoundEnabled = v) } } }
+                )
+                alertToggleRow(
+                    title = "Vibration",
+                    checked = prefs.alertPreferences.tooHighVibrationEnabled,
+                    onChange = { v -> scope.launch { patchAlerts(prefsStore) { it.copy(tooHighVibrationEnabled = v) } } }
+                )
+            }
+        }
+    }
+}
+
+private suspend fun patchAlerts(
+    store: UserPreferencesDataStore,
+    patch: (AlertPreferences) -> AlertPreferences
+) {
+    val current = store.preferences.first()
+    store.save(current.copy(alertPreferences = patch(current.alertPreferences)))
+}
+
+@Composable
+private fun alertToggleRow(
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            if (subtitle != null) {
+                Text(subtitle, color = MutedText, fontSize = 13.sp)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 
