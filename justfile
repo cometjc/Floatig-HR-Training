@@ -10,6 +10,9 @@ plan-next:
 plan-done target:
     python3 scripts/plan_tools.py done {{target}}
 
+plan-done-recent target:
+    python3 scripts/plan_tools.py done {{target}} --allow-recent-commit
+
 plan-complete target:
     @just plan-done {{target}}
 
@@ -21,3 +24,6 @@ pld-bootstrap execution:
 
 pld-integrate execution:
     ./scripts/pld_integrate.sh {{execution}}
+
+pld-run execution:
+    ./scripts/pld_run.sh {{execution}}

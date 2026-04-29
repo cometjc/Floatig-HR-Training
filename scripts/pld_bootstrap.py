@@ -47,6 +47,7 @@ PLD worktree: `.worktrees/{target}`
 - [ ] Implement `{target}` in its dedicated worktree/branch.
 - [ ] Update `docs/specs/*.md` and include keyword `{keyword}`.
 - [ ] Commit lane changes with a conventional commit message.
+- [ ] In lane report, separate verification outcomes into `required` vs `advisory`.
 """
 
 

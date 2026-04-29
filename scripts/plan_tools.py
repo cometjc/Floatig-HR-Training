@@ -152,7 +152,26 @@ def command_next() -> int:
     return 0
 
 
-def command_done(raw_target: str) -> int:
+def recent_spec_paths(limit: int) -> list[Path]:
+    result = subprocess.run(
+        ["git", "log", f"-n{limit}", "--name-only", "--pretty=format:"],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    paths: list[Path] = []
+    for line in result.stdout.splitlines():
+        cleaned = line.strip()
+        if not cleaned:
+            continue
+        candidate = ROOT / cleaned
+        if str(candidate).startswith(str(SPECS_DIR)):
+            paths.append(candidate)
+    return paths
+
+
+def command_done(raw_target: str, allow_recent_commit: bool = False, recent_limit: int = 20) -> int:
     preamble, entries = read_plan()
     current = resolve_target(entries, raw_target)
     matches = spec_matches(current.keyword)
@@ -162,6 +181,10 @@ def command_done(raw_target: str) -> int:
             f"Expected keyword '{current.keyword}' before removing {current.target}."
         )
     changed_matches = [path for path in matches if path in changed_spec_paths()]
+    if not changed_matches and allow_recent_commit:
+        recent_matches = [path for path in matches if path in recent_spec_paths(recent_limit)]
+        if recent_matches:
+            changed_matches = recent_matches
     if not changed_matches:
         raise SystemExit(
             "Plan keyword found in docs/specs, but no staged or unstaged spec changes "
@@ -190,13 +213,24 @@ def main() -> int:
 
     done_parser = subparsers.add_parser("done", help="Remove a completed plan target")
     done_parser.add_argument("target", help="Full target or keyword suffix")
+    done_parser.add_argument(
+        "--allow-recent-commit",
+        action="store_true",
+        help="Allow recently committed matching spec changes to satisfy done checks.",
+    )
+    done_parser.add_argument(
+        "--recent-limit",
+        type=int,
+        default=20,
+        help="How many recent commits to inspect when --allow-recent-commit is enabled.",
+    )
 
     args = parser.parse_args()
 
     if args.command == "next":
         return command_next()
     if args.command == "done":
-        return command_done(args.target)
+        return command_done(args.target, args.allow_recent_commit, args.recent_limit)
 
     return 1
 
