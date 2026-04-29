@@ -26,7 +26,3 @@ plan-014-firebase-distribution:
 	Sentry release steps pass. Use CI secrets for Firebase credentials and tester
 	groups. Deliver install notifications through Firebase instead of ADB.
 
-plan-016-sentry-dashboards:
-	After app-specific events arrive in Sentry, create dashboard widgets for
-	crash-free sessions, foreground service errors, overlay permission failures,
-	BLE connection errors, app start, and workout start latency.

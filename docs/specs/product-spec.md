@@ -114,6 +114,11 @@ Implemented in `plan-015-ui-visual-qa` (`ui-visual-qa`):
 - Expanded `docs/ui-reference/comparison-checklist.md` with lane-level traceability rows so missing screenshots can remain auditable as `pending`.
 - Updated `docs/ui-reference/README.md` with the placeholder workflow, linking checklist and capture tracker for hand-off continuity.
 
+Implemented in `plan-016-sentry-dashboards`:
+
+- Added `sentry-dashboards` spec for operational widgets covering crash-free sessions, foreground service failures, overlay permission failures, BLE connection failures, and app/workout startup latency
+- Defined dashboard query baselines, threshold policy, and recurring validation flow to keep Sentry dashboards aligned with production telemetry
+
 ## Product requirements
 
 ### Core experience

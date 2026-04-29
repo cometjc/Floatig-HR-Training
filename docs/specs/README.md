@@ -7,6 +7,7 @@ This directory holds all spec-oriented documentation for the project.
 - `floating-overlay.md` — floating overlay visuals, activation flow, and alerts
 - `predictive-pacing.md` — current prediction inputs, decisions, and known gaps
 - `pacing-prediction.md` — future design notes that are not yet implemented
+- `sentry-dashboards.md` — dashboard widgets, alert thresholds, and validation flow
 
 Related docs outside this directory:
 
