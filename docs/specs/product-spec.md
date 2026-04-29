@@ -88,6 +88,12 @@ Implemented in `plan-008-edge-to-edge`:
 - `MainActivity` uses `enableEdgeToEdge()`; manifest keeps `adjustResize` on the main activity
 - Bottom navigation, training home list and CTA, history, settings, and in-workout column apply `navigationBarsPadding` / `imePadding` where content meets system bars or the IME
 
+Implemented in `plan-009-navigation-structure`:
+
+- Keep three top-level destinations as explicit app-level tabs: `Training`, `Verlauf`, and `Einstellungen`
+- Model in-app routes via typed UI state (`AppNavigationState`) with explicit nested training destinations (`PlanList`, `PlanEditor`) instead of ad-hoc booleans
+- Preserve `navigation-structure` tab state when switching top-level tabs so training sub-destination context remains stable until explicitly dismissed
+
 Implemented in `plan-011-sentry-releases`:
 
 - After a successful debug build, CI optionally creates a Sentry release named `com.cometjc.floatighrtraining@<versionName>+<versionCode>-<shortSha>`, runs `set-commits --local`, finalizes, and records deploy `internal-test` when `SENTRY_AUTH_TOKEN` is configured

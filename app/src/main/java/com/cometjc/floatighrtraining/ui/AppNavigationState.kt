@@ -25,10 +25,7 @@ data class AppNavigationState(
     val trainingDestination: TrainingDestination? = null
 ) {
     fun selectTopLevel(destination: AppTopLevelDestination): AppNavigationState {
-        return copy(
-            topLevelDestination = destination,
-            trainingDestination = null
-        )
+        return copy(topLevelDestination = destination)
     }
 
     fun showTrainingPlans(): AppNavigationState {

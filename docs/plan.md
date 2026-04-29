@@ -21,11 +21,6 @@ Planning notes:
 
 ---
 
-plan-009-navigation-structure:
-	Keep the current three top-level areas (Training, Verlauf, Einstellungen),
-	introduce typed screen state, preserve tab state, and make dialogs/editors
-	explicit destinations before considering a full navigation library migration.
-
 plan-013-sentry-release-hardening:
 	Review ProGuard/R8 mapping upload for release variants, decide whether source
 	context should remain enabled outside internal builds, and document the chosen

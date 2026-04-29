@@ -14,13 +14,13 @@ class AppNavigationStateTest {
     }
 
     @Test
-    fun selectsTopLevelDestinationAndClearsTrainingDestination() {
+    fun selectsTopLevelDestinationAndPreservesTrainingDestinationForTabState() {
         val state = AppNavigationState()
             .showTrainingPlans()
             .selectTopLevel(AppTopLevelDestination.History)
 
         assertEquals(AppTopLevelDestination.History, state.topLevelDestination)
-        assertNull(state.trainingDestination)
+        assertEquals(TrainingDestination.PlanList, state.trainingDestination)
     }
 
     @Test
