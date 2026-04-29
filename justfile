@@ -17,13 +17,13 @@ plan-complete target:
     @just plan-done {{target}}
 
 pld-preflight:
-    ./scripts/pld_preflight.sh
+    bash -lc 'root="$$(git rev-parse --show-toplevel)"; pld_root="$${PLD_SKILL_ROOT:-$$HOME/.agents/skills/pld}"; export PATH="$$pld_root/scripts:$$PATH"; if command -v pld_preflight.sh >/dev/null 2>&1; then pld_preflight.sh --project-root "$$root"; else "$$pld_root/scripts/pld_preflight.sh" --project-root "$$root"; fi'
 
 pld-bootstrap execution:
-    python3 scripts/pld_bootstrap.py --execution {{execution}}
+    bash -lc 'root="$$(git rev-parse --show-toplevel)"; pld_root="$${PLD_SKILL_ROOT:-$$HOME/.agents/skills/pld}"; export PATH="$$pld_root/scripts:$$PATH"; if command -v pld_bootstrap.py >/dev/null 2>&1; then pld_bootstrap.py --execution {{execution}} --project-root "$$root"; else python3 "$$pld_root/scripts/pld_bootstrap.py" --execution {{execution}} --project-root "$$root"; fi'
 
-pld-integrate execution:
-    ./scripts/pld_integrate.sh {{execution}}
+pld-integrate execution +opts:
+    bash -lc 'root="$$(git rev-parse --show-toplevel)"; pld_root="$${PLD_SKILL_ROOT:-$$HOME/.agents/skills/pld}"; export PATH="$$pld_root/scripts:$$PATH"; if command -v pld_integrate.sh >/dev/null 2>&1; then pld_integrate.sh --project-root "$$root" {{execution}} {{opts}}; else "$$pld_root/scripts/pld_integrate.sh" --project-root "$$root" {{execution}} {{opts}}; fi'
 
 pld-run execution:
-    ./scripts/pld_run.sh {{execution}}
+    bash -lc 'root="$$(git rev-parse --show-toplevel)"; pld_root="$${PLD_SKILL_ROOT:-$$HOME/.agents/skills/pld}"; export PATH="$$pld_root/scripts:$$PATH"; if command -v pld_run.sh >/dev/null 2>&1; then pld_run.sh --project-root "$$root" {{execution}}; else "$$pld_root/scripts/pld_run.sh" --project-root "$$root" {{execution}}; fi'
