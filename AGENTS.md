@@ -8,6 +8,9 @@
 
 - `docs/plan.md` 是唯一的未完成計畫來源。
 - `docs/specs/` 是唯一的 spec 來源；不要再把 spec 留在 `docs/` 根目錄。
+- 在規劃階段使用 `$do` 時，一次規劃所有目前沒有被依賴阻塞的後續 plans，不只規劃眼前的單一步驟。
+- 規劃時要盡可能一路推進到各個決策點，提前整理中途可能需要使用者決斷的問題，避免執行到一半才回頭補問。
+- 同一輪已規劃好的 plans，預設一路執行到完成並合併回主線後，再開始下一輪規劃；除非途中出現新阻塞、需求變更，或使用者明確改道。
 - 開始做下一個 plan 前，先執行 `just plan-ready`（或相容別名 `just plan-next`），只從目前無相依 target 中挑選。
 - 完成某個 plan 後，必須先把對應行為更新到 `docs/specs/*.md`，並在至少一份 spec 中留下該 plan keyword。
 - spec 更新完成後，再執行 `just plan-done <target-or-keyword>`（或相容別名 `just plan-complete <target-or-keyword>`）。
