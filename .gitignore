@@ -8,3 +8,4 @@ local.properties
 sentry.properties
 sentry-wizard
 .worktrees/
+/.env-store*
